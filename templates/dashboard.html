@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kapsül Dashboard</title>
+  <style>
+    :root{
+      --bg:#070A12; --bg2:#04050B;
+      --ink:#E9ECFF; --muted:#A7AFD6;
+      --line:rgba(233,236,255,.14);
+      --accent:#9B7CFF; --accent2:#20E3B2; --warn:#FF3D81;
+      --radius:18px;
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--ink);
+      background:
+        radial-gradient(1300px 800px at 12% 8%, rgba(155,124,255,.18), transparent 60%),
+        radial-gradient(900px 700px at 85% 25%, rgba(32,227,178,.10), transparent 62%),
+        radial-gradient(900px 700px at 65% 110%, rgba(255,61,129,.09), transparent 62%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      overflow-x:hidden;
+    }
+    .wrap{ max-width: 1120px; margin: 0 auto; padding: 34px 18px 70px; }
+    .header{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:14px;
+      margin-bottom: 16px;
+    }
+    .hgroup h1{ margin:0; font-size: 20px; font-weight: 760; }
+    .hgroup p{ margin:6px 0 0; color: var(--muted); max-width: 680px; }
+    .topActions{ display:flex; gap:10px; align-items:center; }
+    .linkBtn{
+      border:1px solid rgba(233,236,255,.16);
+      background: rgba(4,6,14,.50);
+      color: rgba(233,236,255,.86);
+      text-decoration:none;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+
+    .grid{ display:grid; grid-template-columns: 1.05fr .95fr; gap: 14px; margin-top: 12px; }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
+
+    .panel{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(233,236,255,.06), rgba(233,236,255,.03));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+    .panel > .in{ position:relative; padding: 16px; }
+
+    .status{
+      padding: 10px 12px;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(4,6,14,.48);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      display:inline-flex; gap:10px; align-items:center;
+    }
+    .flag{ width:10px;height:10px;border-radius:50%; background: rgba(255,61,129,.75); }
+    .open .flag{ background: rgba(41,255,176,.85); }
+
+    .counts{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 10px; }
+    .meter{ border:1px solid var(--line); background: rgba(4,6,14,.48); border-radius: 14px; padding: 10px 12px; min-width: 180px; }
+    .meter .t{
+      color: rgba(233,236,255,.78);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      display:flex; justify-content:space-between;
+    }
+    .bar{ height: 8px; margin-top: 8px; border-radius: 999px; background: rgba(233,236,255,.08); overflow:hidden; }
+    .bar > i{
+      display:block; height:100%;
+      width: var(--w, 0%);
+      background: linear-gradient(90deg, rgba(155,124,255,.9), rgba(32,227,178,.75));
+      border-radius: 999px;
+    }
+
+    h3{
+      margin: 14px 0 8px;
+      font-size: 13px;
+      letter-spacing:.6px;
+      text-transform: uppercase;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      color: rgba(233,236,255,.86);
+    }
+    .field{
+      border:1px solid rgba(233,236,255,.16);
+      background: rgba(7,10,18,.55);
+      color: var(--ink);
+      border-radius: 14px;
+      padding: 12px 12px;
+      width:100%;
+      outline:none;
+    }
+    textarea.field{ min-height: 110px; resize: vertical; }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:10px;
+      border: 1px solid rgba(233,236,255,.18);
+      background: linear-gradient(135deg, rgba(155,124,255,.30), rgba(32,227,178,.18));
+      color: var(--ink);
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 720;
+      cursor:pointer;
+    }
+    .note{ color: rgba(233,236,255,.72); font-size: 12px; margin-top: 8px; }
+    .divider{ height:1px; background: rgba(233,236,255,.12); margin: 14px 0; }
+
+    .list{ margin: 8px 0 0; padding: 0 0 0 18px; }
+    .list li{ margin: 8px 0; color: rgba(233,236,255,.90); }
+    .empty{ color: rgba(233,236,255,.65); margin-top: 8px; }
+
+    .gallery{ display:flex; flex-wrap:wrap; gap: 10px; margin-top: 10px; }
+    .thumb{
+      width: 160px; height: 160px;
+      border-radius: 14px;
+      border:1px solid rgba(233,236,255,.12);
+      background: rgba(4,6,14,.45);
+      overflow:hidden;
+    }
+    .thumb img{ width:100%; height:100%; object-fit: cover; display:block; }
+
+    video{
+      width:100%;
+      max-width: 820px;
+      border-radius: 16px;
+      border:1px solid rgba(233,236,255,.16);
+      background: rgba(4,6,14,.55);
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="hgroup">
+        <h1>Zihin Kapsülü</h1>
+        <p>Kilitliyken biriktir. Açılınca tek seferde hatırla.</p>
+      </div>
+      <div class="topActions">
+        <a class="linkBtn" href="/logout">Çıkış</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="panel">
+        <div class="in">
+          <div class="status {% if open %}open{% endif %}">
+            <span class="flag"></span>
+            <span><b>Durum:</b> {% if open %}AÇIK{% else %}KİLİTLİ{% endif %}</span>
+          </div>
+
+          <div class="note" style="margin-top:10px;"><b>unlock_at:</b> {{ capsule["unlock_at"] or "henüz yok" }}</div>
+
+          <div class="counts">
+            <div class="meter">
+              <div class="t"><span>metin</span><span>{{ notes_c }}/{{ MAX_NOTES }}</span></div>
+              <div class="bar"><i style="--w: {{ (notes_c*100)//MAX_NOTES }}%"></i></div>
+            </div>
+            <div class="meter">
+              <div class="t"><span>foto</span><span>{{ photos_c }}/{{ MAX_PHOTOS }}</span></div>
+              <div class="bar"><i style="--w: {{ (photos_c*100)//MAX_PHOTOS }}%"></i></div>
+            </div>
+            <div class="meter">
+              <div class="t"><span>video</span><span>{{ videos_c }}/{{ MAX_VIDEOS }}</span></div>
+              <div class="bar"><i style="--w: {{ (videos_c*100)//MAX_VIDEOS }}%"></i></div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          {% if not open %}
+            <h3>kilit zamanı</h3>
+            <form method="post" action="/set-unlock">
+              <div class="row">
+                <input class="field" type="datetime-local" name="unlock_at" required>
+                <button class="btn" type="submit">⟡ Kaydet</button>
+              </div>
+              <div class="note">Test için 1–2 dakika sonrası iyi. (TR saati kabul edilir.)</div>
+            </form>
+
+            <div class="divider"></div>
+
+            <h3>anı yaz</h3>
+            <form method="post" action="/add-note">
+              <textarea class="field" name="text" placeholder="Bugünün zihninden geleceğe bir not…" required></textarea>
+              <div class="row" style="margin-top:10px;">
+                <button class="btn" type="submit">⟡ Metni Kaydet</button>
+              </div>
+              <div class="note">Maksimum {{ MAX_NOTES }} metin.</div>
+            </form>
+
+            <div class="divider"></div>
+
+            <h3>foto yükle</h3>
+            <form method="post" action="/upload-photo" enctype="multipart/form-data">
+              <div class="row">
+                <input class="field" type="file" name="file" accept="image/*" required>
+                <button class="btn" type="submit">⟡ Foto Yükle</button>
+              </div>
+              <div class="note">Maksimum {{ MAX_PHOTOS }} foto.</div>
+            </form>
+
+            <div class="divider"></div>
+
+            <h3>video yükle</h3>
+            <form method="post" action="/upload-video" enctype="multipart/form-data">
+              <div class="row">
+                <input class="field" type="file" name="file" accept="video/*" required>
+                <button class="btn" type="submit">⟡ Video Yükle</button>
+              </div>
+              <div class="note">Maksimum {{ MAX_VIDEOS }} video. (Açılınca yükleme kapanır.)</div>
+            </form>
+          {% else %}
+            <h3>kapsül açıldı</h3>
+            <div class="note">Artık yükleme kapalı. İçerikler sağ panelde.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="panel">
+        <div class="in">
+          <h3>anılar</h3>
+          {% if open %}
+            {% if notes and notes|length > 0 %}
+              <ol class="list">
+                {% for n in notes %}
+                  <li>{{ n["text"] }}</li>
+                {% endfor %}
+              </ol>
+            {% else %}
+              <div class="empty">Henüz metin yok.</div>
+            {% endif %}
+
+            <div class="divider"></div>
+
+            <h3>fotoğraflar</h3>
+            {% if photos and photos|length > 0 %}
+              <div class="gallery">
+                {% for p in photos %}
+                  <a class="thumb" href="/file?media_id={{ p['id'] }}" target="_blank" title="{{ p['original_name'] or 'photo' }}">
+                    <img src="/file?media_id={{ p['id'] }}" alt="photo">
+                  </a>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="empty">Henüz foto yok.</div>
+            {% endif %}
+
+            <div class="divider"></div>
+
+            <h3>video</h3>
+            {% if video %}
+              <video controls>
+                <source src="/file?media_id={{ video['id'] }}">
+                Tarayıcın video oynatmayı desteklemiyor.
+              </video>
+            {% else %}
+              <div class="empty">Henüz video yok.</div>
+            {% endif %}
+          {% else %}
+            <div class="empty">Kilit açılınca içerikler burada görünecek.</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
