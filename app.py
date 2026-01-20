@@ -1,57 +1,120 @@
-from fastapi import FastAPI, Request, Form, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+# app.py — NexusMemoir (clean + production-ish MVP)
+# - Session-based ownership (token URL'de kalmaz)
+# - Cloudflare R2 (S3 compatible) media storage (private bucket + presigned URL)
+# - SQLite DB (Render'da kalıcılık için persistent disk önerilir)
+# - Limits: 5 notes, 10 photos, 1 video
+#
+# ENV (Render -> Environment):
+#   SECRET_KEY               (zorunlu, uzun rastgele)
+#   ADMIN_PASSWORD           (zorunlu, /admin/create?p=... için)
+#   R2_ENDPOINT              (zorunlu)  https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+#   R2_ACCESS_KEY_ID         (zorunlu)
+#   R2_SECRET_ACCESS_KEY     (zorunlu)
+#   R2_BUCKET                (zorunlu)  nexusmemoir-media
+#   DB_PATH                  (opsiyonel) /var/data/db.sqlite3 (persistent disk önerilir)
+
+import os
+import re
+import hashlib
+import secrets
+import sqlite3
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+import boto3
+from botocore.config import Config
+
+from fastapi import FastAPI, Request, Form, UploadFile, File, Query
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-import os
-import sqlite3
-import secrets
-import hashlib
-from datetime import datetime, timezone, timedelta
-ADMIN_PASSWORD = "zihin-anahtar-2026"
 
-APP_DIR = os.path.dirname(__file__)
-DB_PATH = os.path.join(APP_DIR, "db.sqlite3")
-UPLOAD_DIR = os.path.join(APP_DIR, "uploads")
-
-app = FastAPI()
-templates = Jinja2Templates(directory="templates")
-
-# ✅ Session (prod'da secret key'i değiştir!)
-app.add_middleware(SessionMiddleware, secret_key="CHANGE_ME_TO_A_LONG_RANDOM_SECRET_1234567890")
-
-# Limitler
+# -------------------------
+# Config
+# -------------------------
 MAX_NOTES = 5
 MAX_PHOTOS = 10
 MAX_VIDEOS = 1
 
-# Dosya boyutu limitleri (byte)
 MAX_PHOTO_BYTES = 10 * 1024 * 1024   # 10MB
 MAX_VIDEO_BYTES = 80 * 1024 * 1024   # 80MB
 
+ALLOWED_PHOTO = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_VIDEO = {"video/mp4", "video/webm", "video/quicktime"}  # mov=quicktime
+
+TZ_TR = ZoneInfo("Europe/Istanbul")
+
+
+def env_required(name: str) -> str:
+    v = os.getenv(name)
+    if not v:
+        raise RuntimeError(f"Missing required env var: {name}")
+    return v
+
+
+SECRET_KEY = env_required("SECRET_KEY")
+ADMIN_PASSWORD = env_required("ADMIN_PASSWORD")
+
+R2_ENDPOINT = env_required("R2_ENDPOINT")
+R2_ACCESS_KEY_ID = env_required("R2_ACCESS_KEY_ID")
+R2_SECRET_ACCESS_KEY = env_required("R2_SECRET_ACCESS_KEY")
+R2_BUCKET = env_required("R2_BUCKET")
+
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "db.sqlite3"))
+
 
 # -------------------------
-# Helpers
+# App
+# -------------------------
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+
+# -------------------------
+# DB helpers
 # -------------------------
 def db():
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     return con
 
+
 def sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
-def now_utc():
+
+def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
-def parse_unlock(unlock_at):
-    if not unlock_at:
-        return None
-    return datetime.fromisoformat(unlock_at)
 
-def is_open(unlock_at):
-    dt = parse_unlock(unlock_at)
-    return dt is not None and datetime.now(timezone.utc) >= dt
+def parse_iso(dt_str: str):
+    if not dt_str:
+        return None
+    # sqlite stores ISO with offset, ex: 2026-01-21T12:00:00+00:00
+    return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+
+
+def is_open(unlock_at: str | None) -> bool:
+    dt = parse_iso(unlock_at)
+    if not dt:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) >= dt
+
+
+def require_capsule_id(request: Request) -> int | None:
+    return request.session.get("capsule_id")
+
+
+def safe_filename(name: str) -> str:
+    name = name or "file"
+    name = name.replace("\\", "_").replace("/", "_")
+    name = re.sub(r"[^a-zA-Z0-9._-]+", "_", name)
+    return name[:120]
+
 
 def init_db():
     con = db()
@@ -76,13 +139,16 @@ def init_db():
     )
     """)
 
+    # Media stored in R2 (private). We store only r2_key + metadata.
     cur.execute("""
     CREATE TABLE IF NOT EXISTS media (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         capsule_id INTEGER NOT NULL,
-        kind TEXT NOT NULL,       -- 'photo' | 'video'
-        path TEXT NOT NULL,
+        kind TEXT NOT NULL,           -- 'photo' | 'video'
+        r2_key TEXT NOT NULL,
         original_name TEXT,
+        content_type TEXT,
+        size_bytes INTEGER,
         created_at TEXT NOT NULL,
         FOREIGN KEY(capsule_id) REFERENCES capsules(id)
     )
@@ -91,36 +157,58 @@ def init_db():
     con.commit()
     con.close()
 
-def count_notes(cur, capsule_id: int) -> int:
-    return cur.execute(
-        "SELECT COUNT(*) AS c FROM notes WHERE capsule_id=?",
-        (capsule_id,)
-    ).fetchone()["c"]
-
-def count_photos(cur, capsule_id: int) -> int:
-    return cur.execute(
-        "SELECT COUNT(*) AS c FROM media WHERE capsule_id=? AND kind='photo'",
-        (capsule_id,)
-    ).fetchone()["c"]
-
-def count_videos(cur, capsule_id: int) -> int:
-    return cur.execute(
-        "SELECT COUNT(*) AS c FROM media WHERE capsule_id=? AND kind='video'",
-        (capsule_id,)
-    ).fetchone()["c"]
-
-def require_capsule_id(request: Request):
-    capsule_id = request.session.get("capsule_id")
-    return capsule_id
-
-def safe_filename(name: str) -> str:
-    return (name or "file").replace("/", "_").replace("\\", "_")
-
 
 @app.on_event("startup")
 def on_startup():
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
     init_db()
+
+
+# -------------------------
+# R2 helpers
+# -------------------------
+def r2_client():
+    return boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+        config=Config(signature_version="s3v4"),
+    )
+
+
+def r2_put_bytes(key: str, data: bytes, content_type: str):
+    s3 = r2_client()
+    s3.put_object(
+        Bucket=R2_BUCKET,
+        Key=key,
+        Body=data,
+        ContentType=content_type,
+    )
+
+
+def r2_presigned_get(key: str, expires_sec: int = 600) -> str:
+    s3 = r2_client()
+    return s3.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={"Bucket": R2_BUCKET, "Key": key},
+        ExpiresIn=expires_sec,
+    )
+
+
+# -------------------------
+# Counting
+# -------------------------
+def count_notes(cur, capsule_id: int) -> int:
+    return cur.execute("SELECT COUNT(*) AS c FROM notes WHERE capsule_id=?", (capsule_id,)).fetchone()["c"]
+
+
+def count_photos(cur, capsule_id: int) -> int:
+    return cur.execute("SELECT COUNT(*) AS c FROM media WHERE capsule_id=? AND kind='photo'", (capsule_id,)).fetchone()["c"]
+
+
+def count_videos(cur, capsule_id: int) -> int:
+    return cur.execute("SELECT COUNT(*) AS c FROM media WHERE capsule_id=? AND kind='video'", (capsule_id,)).fetchone()["c"]
 
 
 # -------------------------
@@ -130,24 +218,25 @@ def on_startup():
 def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 @app.get("/logout")
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/", status_code=303)
 
-from fastapi import Query
 
 @app.get("/admin/create", response_class=HTMLResponse)
 def admin_create(request: Request, p: str = Query(default="")):
-    # Admin şifresi kontrolü
     if p != ADMIN_PASSWORD:
-        return HTMLResponse("""
-        <div style="font-family:sans-serif;padding:40px">
-            <h2>🚫 Yetkisiz Erişim</h2>
-            <p>Bu alan sadece admin içindir.</p>
-            <p>Kullanım: <code>/admin/create?p=ADMIN_SIFRESI</code></p>
-        </div>
-        """, status_code=403)
+        return HTMLResponse(
+            """
+            <div style="font-family:system-ui;padding:40px">
+              <h2>🚫 Yetkisiz</h2>
+              <p>Kullanım: <code>/admin/create?p=ADMIN_PASSWORD</code></p>
+            </div>
+            """,
+            status_code=403,
+        )
 
     token = secrets.token_urlsafe(24)
     pin = f"{secrets.randbelow(10**6):06d}"
@@ -156,55 +245,58 @@ def admin_create(request: Request, p: str = Query(default="")):
     cur = con.cursor()
     cur.execute(
         "INSERT INTO capsules(token_hash, pin_hash, unlock_at) VALUES(?,?,?)",
-        (sha256(token), sha256(pin), None)
+        (sha256(token), sha256(pin), None),
     )
     con.commit()
     capsule_id = cur.lastrowid
     con.close()
 
-    claim_url = f"/claim?token={token}"
+    # claim link (absolute)
+    base = str(request.base_url).rstrip("/")
+    claim_url = f"{base}/claim?token={token}"
 
-    return HTMLResponse(f"""
-    <div style="font-family:sans-serif;padding:40px">
-        <h2>🧠 Kapsül oluşturuldu ✅</h2>
-        <p><b>Capsule ID:</b> {capsule_id}</p>
+    return HTMLResponse(
+        f"""
+        <div style="font-family:system-ui;padding:40px;max-width:840px">
+          <h2>🧠 Kapsül oluşturuldu ✅</h2>
+          <p><b>Capsule ID:</b> {capsule_id}</p>
 
-        <p><b>QR Link:</b></p>
-        <input style="width:100%;padding:10px" value="{claim_url}" readonly>
+          <p><b>QR Link:</b></p>
+          <input style="width:100%;padding:12px;font-size:14px" value="{claim_url}" readonly>
 
-        <p><b>PIN:</b></p>
-        <input style="font-size:22px;padding:10px" value="{pin}" readonly>
+          <p style="margin-top:14px"><b>PIN:</b></p>
+          <input style="font-size:22px;padding:12px;width:220px" value="{pin}" readonly>
 
-        <p style="margin-top:16px"><a href="/">Ana sayfa</a></p>
-        <p><a href="{claim_url}">Claim sayfasına git</a></p>
-    </div>
-    """)
+          <p style="margin-top:18px"><a href="/">Ana sayfa</a></p>
+          <p><a href="{claim_url}">Claim sayfasına git</a></p>
+        </div>
+        """
+    )
 
 
 @app.get("/claim", response_class=HTMLResponse)
 def claim_page(request: Request, token: str = ""):
     return templates.TemplateResponse("claim.html", {"request": request, "token": token, "error": ""})
 
+
 @app.post("/claim")
 def claim_submit(request: Request, token: str = Form(...), pin: str = Form(...)):
     con = db()
     cur = con.cursor()
-    row = cur.execute(
-        "SELECT * FROM capsules WHERE token_hash=?",
-        (sha256(token),)
-    ).fetchone()
+    row = cur.execute("SELECT * FROM capsules WHERE token_hash=?", (sha256(token),)).fetchone()
     con.close()
 
-    if not row or row["pin_hash"] != sha256(pin):
+    if (not row) or (row["pin_hash"] != sha256(pin)):
         return templates.TemplateResponse(
             "claim.html",
             {"request": request, "token": token, "error": "Token veya PIN hatalı."},
-            status_code=400
+            status_code=400,
         )
 
-    # ✅ Oturum aç: token artık URL’de taşınmayacak
+    # session ownership
     request.session["capsule_id"] = row["id"]
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
@@ -225,22 +317,22 @@ def dashboard(request: Request):
 
     notes = cur.execute(
         "SELECT * FROM notes WHERE capsule_id=? ORDER BY id",
-        (cap["id"],)
+        (capsule_id,),
     ).fetchall()
 
     photos = cur.execute(
         "SELECT * FROM media WHERE capsule_id=? AND kind='photo' ORDER BY id",
-        (cap["id"],)
+        (capsule_id,),
     ).fetchall()
 
     video = cur.execute(
         "SELECT * FROM media WHERE capsule_id=? AND kind='video' ORDER BY id",
-        (cap["id"],)
+        (capsule_id,),
     ).fetchone()
 
-    notes_c = count_notes(cur, cap["id"])
-    photos_c = count_photos(cur, cap["id"])
-    videos_c = count_videos(cur, cap["id"])
+    notes_c = count_notes(cur, capsule_id)
+    photos_c = count_photos(cur, capsule_id)
+    videos_c = count_videos(cur, capsule_id)
 
     con.close()
 
@@ -258,8 +350,8 @@ def dashboard(request: Request):
             "videos_c": videos_c,
             "MAX_NOTES": MAX_NOTES,
             "MAX_PHOTOS": MAX_PHOTOS,
-            "MAX_VIDEOS": MAX_VIDEOS
-        }
+            "MAX_VIDEOS": MAX_VIDEOS,
+        },
     )
 
 
@@ -272,10 +364,12 @@ def set_unlock(request: Request, unlock_at: str = Form(...)):
     if not capsule_id:
         return RedirectResponse(url="/", status_code=303)
 
-    # Kullanıcı TR saati giriyor (UTC+3). UTC'ye çeviriyoruz.
+    # User enters TR local time (datetime-local -> naive)
+    # Convert to UTC for storage.
     try:
-        dt_local = datetime.fromisoformat(unlock_at)
-        dt = dt_local.replace(tzinfo=timezone(timedelta(hours=3))).astimezone(timezone.utc)
+        dt_local_naive = datetime.fromisoformat(unlock_at)  # naive
+        dt_local = dt_local_naive.replace(tzinfo=TZ_TR)
+        dt_utc = dt_local.astimezone(timezone.utc)
     except Exception:
         return HTMLResponse("Tarih formatı hatalı.", status_code=400)
 
@@ -284,13 +378,19 @@ def set_unlock(request: Request, unlock_at: str = Form(...)):
     cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
     if not cap:
         con.close()
-        return RedirectResponse(url="/logout", status_code=303)
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
 
-    cur.execute("UPDATE capsules SET unlock_at=? WHERE id=?", (dt.isoformat(), cap["id"]))
+    if is_open(cap["unlock_at"]):
+        con.close()
+        return HTMLResponse("Kapsül açılmış, zaman değiştirilemez.", status_code=400)
+
+    cur.execute("UPDATE capsules SET unlock_at=? WHERE id=?", (dt_utc.isoformat(), capsule_id))
     con.commit()
     con.close()
 
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 @app.post("/add-note")
 def add_note(request: Request, text: str = Form(...)):
@@ -298,30 +398,35 @@ def add_note(request: Request, text: str = Form(...)):
     if not capsule_id:
         return RedirectResponse(url="/", status_code=303)
 
+    txt = (text or "").strip()
+    if not txt:
+        return HTMLResponse("Boş metin eklenemez.", status_code=400)
+
     con = db()
     cur = con.cursor()
     cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
-
     if not cap:
         con.close()
-        return RedirectResponse(url="/logout", status_code=303)
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
 
     if is_open(cap["unlock_at"]):
         con.close()
         return HTMLResponse("Kapsül açılmış, artık metin eklenemez.", status_code=400)
 
-    if count_notes(cur, cap["id"]) >= MAX_NOTES:
+    if count_notes(cur, capsule_id) >= MAX_NOTES:
         con.close()
         return HTMLResponse("Metin limiti doldu (5/5).", status_code=400)
 
     cur.execute(
         "INSERT INTO notes(capsule_id, text, created_at) VALUES(?,?,?)",
-        (cap["id"], text.strip(), now_utc())
+        (capsule_id, txt, now_utc_iso()),
     )
     con.commit()
     con.close()
 
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 @app.post("/upload-photo")
 async def upload_photo(request: Request, file: UploadFile = File(...)):
@@ -329,48 +434,54 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
     if not capsule_id:
         return RedirectResponse(url="/", status_code=303)
 
+    if file.content_type not in ALLOWED_PHOTO:
+        return HTMLResponse("Geçersiz foto formatı. (jpg/png/webp)", status_code=400)
+
     con = db()
     cur = con.cursor()
     cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
-
     if not cap:
         con.close()
-        return RedirectResponse(url="/logout", status_code=303)
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
 
     if is_open(cap["unlock_at"]):
         con.close()
         return HTMLResponse("Kapsül açılmış, artık foto yüklenemez.", status_code=400)
 
-    if not (file.content_type or "").startswith("image/"):
-        con.close()
-        return HTMLResponse("Lütfen fotoğraf dosyası yükleyin.", status_code=400)
-
-    if count_photos(cur, cap["id"]) >= MAX_PHOTOS:
+    if count_photos(cur, capsule_id) >= MAX_PHOTOS:
         con.close()
         return HTMLResponse("Foto limit doldu (10/10).", status_code=400)
 
-    content = await file.read()
-    if len(content) > MAX_PHOTO_BYTES:
+    data = await file.read()
+    if len(data) > MAX_PHOTO_BYTES:
         con.close()
         return HTMLResponse("Foto çok büyük (max 10MB).", status_code=400)
 
-    cap_dir = os.path.join(UPLOAD_DIR, str(cap["id"]))
-    os.makedirs(cap_dir, exist_ok=True)
+    # ext based on content_type
+    ext = ".jpg"
+    if file.content_type == "image/png":
+        ext = ".png"
+    elif file.content_type == "image/webp":
+        ext = ".webp"
 
-    fname = f"photo_{secrets.token_hex(6)}_{safe_filename(file.filename)}"
-    path = os.path.join(cap_dir, fname)
+    original = safe_filename(file.filename)
+    key = f"capsules/{capsule_id}/photos/{secrets.token_urlsafe(16)}{ext}"
 
-    with open(path, "wb") as f:
-        f.write(content)
+    # Put to R2
+    r2_put_bytes(key=key, data=data, content_type=file.content_type)
 
+    # Save in DB
     cur.execute(
-        "INSERT INTO media(capsule_id, kind, path, original_name, created_at) VALUES(?,?,?,?,?)",
-        (cap["id"], "photo", path, file.filename, now_utc())
+        """INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (capsule_id, "photo", key, original, file.content_type, len(data), now_utc_iso()),
     )
     con.commit()
     con.close()
 
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 @app.post("/upload-video")
 async def upload_video(request: Request, file: UploadFile = File(...)):
@@ -378,51 +489,58 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
     if not capsule_id:
         return RedirectResponse(url="/", status_code=303)
 
+    if file.content_type not in ALLOWED_VIDEO:
+        return HTMLResponse("Geçersiz video formatı. (mp4/webm/mov)", status_code=400)
+
     con = db()
     cur = con.cursor()
     cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
-
     if not cap:
         con.close()
-        return RedirectResponse(url="/logout", status_code=303)
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
 
     if is_open(cap["unlock_at"]):
         con.close()
         return HTMLResponse("Kapsül açılmış, artık video yüklenemez.", status_code=400)
 
-    if not (file.content_type or "").startswith("video/"):
-        con.close()
-        return HTMLResponse("Lütfen video dosyası yükleyin.", status_code=400)
-
-    if count_videos(cur, cap["id"]) >= MAX_VIDEOS:
+    if count_videos(cur, capsule_id) >= MAX_VIDEOS:
         con.close()
         return HTMLResponse("Video limiti doldu (1/1).", status_code=400)
 
-    content = await file.read()
-    if len(content) > MAX_VIDEO_BYTES:
+    data = await file.read()
+    if len(data) > MAX_VIDEO_BYTES:
         con.close()
         return HTMLResponse("Video çok büyük (max 80MB).", status_code=400)
 
-    cap_dir = os.path.join(UPLOAD_DIR, str(cap["id"]))
-    os.makedirs(cap_dir, exist_ok=True)
+    ext = ".mp4"
+    if file.content_type == "video/webm":
+        ext = ".webm"
+    elif file.content_type == "video/quicktime":
+        ext = ".mov"
 
-    fname = f"video_{secrets.token_hex(6)}_{safe_filename(file.filename)}"
-    path = os.path.join(cap_dir, fname)
+    original = safe_filename(file.filename)
+    key = f"capsules/{capsule_id}/videos/{secrets.token_urlsafe(16)}{ext}"
 
-    with open(path, "wb") as f:
-        f.write(content)
+    r2_put_bytes(key=key, data=data, content_type=file.content_type)
 
     cur.execute(
-        "INSERT INTO media(capsule_id, kind, path, original_name, created_at) VALUES(?,?,?,?,?)",
-        (cap["id"], "video", path, file.filename, now_utc())
+        """INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (capsule_id, "video", key, original, file.content_type, len(data), now_utc_iso()),
     )
     con.commit()
     con.close()
 
     return RedirectResponse(url="/dashboard", status_code=303)
 
-@app.get("/file")
-def serve_file(request: Request, media_id: int):
+
+@app.get("/m/{media_id}")
+def open_media(request: Request, media_id: int):
+    """
+    Open media only if capsule is open.
+    Returns a short-lived presigned URL redirect (bucket stays private).
+    """
     capsule_id = require_capsule_id(request)
     if not capsule_id:
         return HTMLResponse("Yetkisiz.", status_code=403)
@@ -431,18 +549,18 @@ def serve_file(request: Request, media_id: int):
     cur = con.cursor()
 
     cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
-    if not cap or not is_open(cap["unlock_at"]):
+    if not cap or (not is_open(cap["unlock_at"])):
         con.close()
         return HTMLResponse("Kilitli.", status_code=403)
 
     m = cur.execute(
         "SELECT * FROM media WHERE id=? AND capsule_id=?",
-        (media_id, capsule_id)
+        (media_id, capsule_id),
     ).fetchone()
-
     con.close()
 
     if not m:
-        return HTMLResponse("Dosya bulunamadı.", status_code=404)
+        return HTMLResponse("Bulunamadı.", status_code=404)
 
-    return FileResponse(m["path"])
+    url = r2_presigned_get(m["r2_key"], expires_sec=600)  # 10 min
+    return RedirectResponse(url=url, status_code=302)
