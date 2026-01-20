@@ -428,7 +428,7 @@ def add_note(request: Request, text: str = Form(...)):
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
-@app.post("/upload-photo")
+@app.post("/upload/photo")
 async def upload_photo(request: Request, file: UploadFile = File(...)):
     capsule_id = require_capsule_id(request)
     if not capsule_id:
@@ -483,7 +483,7 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
-@app.post("/upload-video")
+@app.post("/upload/video")
 async def upload_video(request: Request, file: UploadFile = File(...)):
     capsule_id = require_capsule_id(request)
     if not capsule_id:
