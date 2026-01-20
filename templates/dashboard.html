@@ -558,17 +558,34 @@
           </div>
 
           {% if not open %}
-            <form action="/upload-photo" method="post" enctype="multipart/form-data">
-              <label>Foto seç</label>
-              <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required
-                     style="width:100%; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.24); color:var(--muted);" />
-              <div class="row" style="margin-top:10px">
-                <div class="hint">Maksimum {{ MAX_PHOTOS }} foto. Şu an {{ photos_c }} adet.</div>
-                <div style="flex:0 0 160px">
-                  <button class="btnSolid" type="submit" {% if photos_c >= MAX_PHOTOS %}disabled{% endif %}>Foto Yükle</button>
-                </div>
-              </div>
-            </form>
+           <form action="/upload/photo" method="post" enctype="multipart/form-data">
+  <label>Foto seç</label>
+
+  <input 
+    type="file" 
+    name="file" 
+    accept="image/jpeg,image/png,image/webp" 
+    required
+    style="width:100%; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.24); color:var(--muted);" 
+  />
+
+  <div class="row" style="margin-top:10px">
+    <div class="hint">
+      Maksimum {{ MAX_PHOTOS }} foto. Şu an {{ photos_c }} adet.
+    </div>
+
+    <div style="flex:0 0 160px">
+      <button 
+        class="btnSolid" 
+        type="submit"
+        {% if photos_c >= MAX_PHOTOS %}disabled{% endif %}
+      >
+        Foto Yükle
+      </button>
+    </div>
+  </div>
+</form>
+
           {% else %}
             <div class="empty">Kapsül açıldı. Foto yükleme kapalı.</div>
           {% endif %}
@@ -582,17 +599,22 @@
           </div>
 
           {% if not open %}
-            <form action="/upload-video" method="post" enctype="multipart/form-data">
-              <label>Video seç</label>
-              <input type="file" name="file" accept="video/mp4,video/webm,video/quicktime" required
-                     style="width:100%; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.24); color:var(--muted);" />
-              <div class="row" style="margin-top:10px">
-                <div class="hint">Maksimum {{ MAX_VIDEOS }} video. Şu an {{ videos_c }} adet.</div>
-                <div style="flex:0 0 160px">
-                  <button class="btnSolid" type="submit" {% if videos_c >= MAX_VIDEOS %}disabled{% endif %}>Video Yükle</button>
-                </div>
-              </div>
-            </form>
+            <form action="/upload/video" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="capsule_id" value="{{ capsule.id }}">
+  <input type="hidden" name="token" value="{{ token }}">
+
+  <label>Video seç</label>
+  <input type="file" name="file" accept="video/mp4,video/webm,video/quicktime" required
+         style="width:100%; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.24); color:var(--muted);" />
+
+  <div class="row" style="margin-top:10px">
+    <div class="hint">Maksimum {{ MAX_VIDEOS }} video. Şu an {{ videos_c }} adet.</div>
+    <div style="flex:0 0 160px">
+      <button class="btnSolid" type="submit" {% if videos_c >= MAX_VIDEOS %}disabled{% endif %}>Video Yükle</button>
+    </div>
+  </div>
+</form>
+
           {% else %}
             <div class="empty">Kapsül açıldı. Video yükleme kapalı.</div>
           {% endif %}
