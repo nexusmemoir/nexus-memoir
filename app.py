@@ -51,7 +51,6 @@ ALLOWED_VIDEO = {"video/mp4", "video/webm", "video/quicktime"}  # mov=quicktime
 TZ_TR = ZoneInfo("Europe/Istanbul")
 
 
-
 def env_required(name: str) -> str:
     v = os.getenv(name)
     if not v:
@@ -82,7 +81,8 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 # DB helpers
 # -------------------------
 def db():
-    con = sqlite3.connect(DB_PATH)
+    # check_same_thread=False: FastAPI async ortamda daha stabil olabilir
+    con = sqlite3.connect(DB_PATH, check_same_thread=False)
     con.row_factory = sqlite3.Row
     return con
 
@@ -98,7 +98,6 @@ def now_utc_iso() -> str:
 def parse_iso(dt_str: str):
     if not dt_str:
         return None
-    # sqlite stores ISO with offset, ex: 2026-01-21T12:00:00+00:00
     return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
 
 
@@ -120,6 +119,18 @@ def safe_filename(name: str) -> str:
     name = name.replace("\\", "_").replace("/", "_")
     name = re.sub(r"[^a-zA-Z0-9._-]+", "_", name)
     return name[:120]
+
+
+def _table_exists(cur, name: str) -> bool:
+    return cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        (name,),
+    ).fetchone() is not None
+
+
+def _table_columns(cur, table: str) -> set[str]:
+    rows = cur.execute(f"PRAGMA table_info({table})").fetchall()
+    return {r["name"] for r in rows}
 
 
 def init_db():
@@ -145,7 +156,7 @@ def init_db():
     )
     """)
 
-    # Media stored in R2 (private). We store only r2_key + metadata.
+    # Yeni şema (r2_key var)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS media (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,6 +170,35 @@ def init_db():
         FOREIGN KEY(capsule_id) REFERENCES capsules(id)
     )
     """)
+
+    # ---- lightweight migration for old DBs ----
+    # Eski DB'lerde media tablosu var ama kolonlar eksik olabilir.
+    if _table_exists(cur, "media"):
+        cols = _table_columns(cur, "media")
+
+        # En kritik kolon: r2_key (senin hatan buydu)
+        if "r2_key" not in cols:
+            cur.execute("ALTER TABLE media ADD COLUMN r2_key TEXT")
+
+        # Diğer kolonlar (eski şemaya göre eksik olabilir)
+        cols = _table_columns(cur, "media")
+        if "kind" not in cols:
+            cur.execute("ALTER TABLE media ADD COLUMN kind TEXT")
+        cols = _table_columns(cur, "media")
+        if "original_name" not in cols:
+            cur.execute("ALTER TABLE media ADD COLUMN original_name TEXT")
+        cols = _table_columns(cur, "media")
+        if "content_type" not in cols:
+            cur.execute("ALTER TABLE media ADD COLUMN content_type TEXT")
+        cols = _table_columns(cur, "media")
+        if "size_bytes" not in cols:
+            cur.execute("ALTER TABLE media ADD COLUMN size_bytes INTEGER")
+        cols = _table_columns(cur, "media")
+        if "created_at" not in cols:
+            cur.execute("ALTER TABLE media ADD COLUMN created_at TEXT")
+        cols = _table_columns(cur, "media")
+        if "capsule_id" not in cols:
+            cur.execute("ALTER TABLE media ADD COLUMN capsule_id INTEGER")
 
     con.commit()
     con.close()
@@ -265,7 +305,6 @@ def admin_create(request: Request, p: str = Query(default="")):
     capsule_id = cur.lastrowid
     con.close()
 
-    # claim link (absolute)
     base = str(request.base_url).rstrip("/")
     claim_url = f"{base}/claim?token={token}"
 
@@ -307,7 +346,6 @@ def claim_submit(request: Request, token: str = Form(...), pin: str = Form(...))
             status_code=400,
         )
 
-    # session ownership
     request.session["capsule_id"] = row["id"]
     return RedirectResponse(url="/dashboard", status_code=303)
 
@@ -378,10 +416,8 @@ def set_unlock(request: Request, unlock_at: str = Form(...)):
     if not capsule_id:
         return RedirectResponse(url="/", status_code=303)
 
-    # User enters TR local time (datetime-local -> naive)
-    # Convert to UTC for storage.
     try:
-        dt_local_naive = datetime.fromisoformat(unlock_at)  # naive
+        dt_local_naive = datetime.fromisoformat(unlock_at)
         dt_local = dt_local_naive.replace(tzinfo=TZ_TR)
         dt_utc = dt_local.astimezone(timezone.utc)
     except Exception:
@@ -472,7 +508,6 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
         con.close()
         return HTMLResponse("Foto çok büyük (max 10MB).", status_code=400)
 
-    # ext based on content_type
     ext = ".jpg"
     if file.content_type == "image/png":
         ext = ".png"
@@ -482,13 +517,8 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
     original = safe_filename(file.filename)
     key = f"capsules/{capsule_id}/photos/{secrets.token_urlsafe(16)}{ext}"
 
-    # Put to R2 (with clear error)
     try:
-        r2_put_bytes(
-            key=key,
-            data=data,
-            content_type=file.content_type,
-        )
+        r2_put_bytes(key=key, data=data, content_type=file.content_type)
     except Exception:
         con.close()
         return HTMLResponse(
@@ -496,7 +526,6 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
             status_code=502,
         )
 
-    # Save in DB
     cur.execute(
         """INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
            VALUES(?,?,?,?,?,?,?)""",
@@ -547,13 +576,8 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
     original = safe_filename(file.filename)
     key = f"capsules/{capsule_id}/videos/{secrets.token_urlsafe(16)}{ext}"
 
-    # Put to R2 (with clear error)
     try:
-        r2_put_bytes(
-            key=key,
-            data=data,
-            content_type=file.content_type,
-        )
+        r2_put_bytes(key=key, data=data, content_type=file.content_type)
     except Exception:
         con.close()
         return HTMLResponse(
@@ -574,10 +598,6 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
 
 @app.get("/m/{media_id}")
 def open_media(request: Request, media_id: int):
-    """
-    Open media only if capsule is open.
-    Returns a short-lived presigned URL redirect (bucket stays private).
-    """
     capsule_id = require_capsule_id(request)
     if not capsule_id:
         return HTMLResponse("Yetkisiz.", status_code=403)
@@ -599,5 +619,5 @@ def open_media(request: Request, media_id: int):
     if not m:
         return HTMLResponse("Bulunamadı.", status_code=404)
 
-    url = r2_presigned_get(m["r2_key"], expires_sec=600)  # 10 min
+    url = r2_presigned_get(m["r2_key"], expires_sec=600)
     return RedirectResponse(url=url, status_code=302)
