@@ -111,7 +111,12 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         token_hash TEXT NOT NULL UNIQUE,
         pin_hash TEXT NOT NULL,
-        unlock_at TEXT
+        unlock_at TEXT,
+        latitude REAL,
+        longitude REAL,
+        location_name TEXT,
+        capsule_title TEXT,
+        is_public INTEGER DEFAULT 1
     )""")
     cur.execute("""CREATE TABLE IF NOT EXISTS notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -192,7 +197,72 @@ def count_videos(cur, capsule_id: int) -> int:
 
 @app.get("/", response_class=HTMLResponse)
 def landing_page(request: Request):
-    return templates.TemplateResponse("landing.html", {"request": request, "admin_password": ADMIN_PASSWORD})
+    return templates.TemplateResponse("globe-landing.html", {"request": request})
+
+
+@app.get("/map", response_class=HTMLResponse)
+def map_page(request: Request):
+    """Interactive map page for creating capsules"""
+    return templates.TemplateResponse("map-explorer.html", {"request": request})
+
+
+@app.get("/api/capsules/public")
+def get_public_capsules(request: Request):
+    """API endpoint for fetching all public capsules for the map"""
+    con = db()
+    cur = con.cursor()
+    
+    # Get all capsules with location data
+    capsules_raw = cur.execute("""
+        SELECT id, capsule_title, location_name, latitude, longitude, unlock_at, is_public 
+        FROM capsules 
+        WHERE is_public = 1 AND latitude IS NOT NULL AND longitude IS NOT NULL
+        ORDER BY id DESC
+    """).fetchall()
+    
+    capsules = []
+    for cap in capsules_raw:
+        is_locked = not is_open(cap["unlock_at"]) if cap["unlock_at"] else True
+        
+        # Format unlock date
+        unlock_date_formatted = None
+        if cap["unlock_at"]:
+            try:
+                dt = parse_iso(cap["unlock_at"])
+                if dt:
+                    dt_local = dt.astimezone(TZ_TR)
+                    unlock_date_formatted = dt_local.strftime("%d.%m.%Y")
+            except:
+                pass
+        
+        capsules.append({
+            "lat": cap["latitude"],
+            "lng": cap["longitude"],
+            "title": cap["capsule_title"] or f"Kapsül #{cap['id']}",
+            "location": cap["location_name"] or "Bilinmeyen",
+            "isLocked": is_locked,
+            "unlockDate": unlock_date_formatted
+        })
+    
+    con.close()
+    
+    # If no capsules exist, return sample data for demo
+    if not capsules:
+        capsules = generate_sample_capsules_data()
+    
+    return {"capsules": capsules, "total": len(capsules)}
+
+
+def generate_sample_capsules_data():
+    """Generate sample capsule data for demo purposes"""
+    samples = [
+        {"lat": 41.0082, "lng": 28.9784, "title": "İstanbul Anıları", "location": "İstanbul, Türkiye", "isLocked": True, "unlockDate": "14.05.2028"},
+        {"lat": 48.8566, "lng": 2.3522, "title": "Paris Seyahati", "location": "Paris, Fransa", "isLocked": True, "unlockDate": "01.01.2027"},
+        {"lat": 35.6762, "lng": 139.6503, "title": "Tokyo Maceramız", "location": "Tokyo, Japonya", "isLocked": False, "unlockDate": None},
+        {"lat": 40.7128, "lng": -74.0060, "title": "NY Hatırası", "location": "New York, ABD", "isLocked": True, "unlockDate": "25.12.2026"},
+        {"lat": 51.5074, "lng": -0.1278, "title": "Londra'dan", "location": "Londra, UK", "isLocked": False, "unlockDate": None},
+    ]
+    return samples
 
 
 @app.get("/logout")
