@@ -122,18 +122,6 @@ def safe_filename(name: str) -> str:
     return name[:120]
 
 
-def _table_exists(cur, name: str) -> bool:
-    return cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-        (name,),
-    ).fetchone() is not None
-
-
-def _table_columns(cur, table: str) -> set[str]:
-    rows = cur.execute(f"PRAGMA table_info({table})").fetchall()
-    return {r["name"] for r in rows}
-
-
 def init_db():
     con = db()
     cur = con.cursor()
@@ -157,30 +145,19 @@ def init_db():
     )
     """)
 
-    # Yeni şema (r2_key var)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS media (
-         # ---- SAFE migration (never crash app on old DBs) ----
-    def ensure_column(table: str, col: str, ddl: str):
-        try:
-            cols = {r["name"] for r in cur.execute(f"PRAGMA table_info({table})").fetchall()}
-            if col in cols:
-                return
-            cur.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
-        except sqlite3.OperationalError as e:
-            # "duplicate column name" gibi durumlarda crash etme
-            print(f"[MIGRATION] skip {table}.{col}: {e}")
-
-    # media tablosu eskiyse kolonları ekle
-    if cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='media'").fetchone():
-        ensure_column("media", "capsule_id", "capsule_id INTEGER")
-        ensure_column("media", "kind", "kind TEXT")
-        ensure_column("media", "r2_key", "r2_key TEXT")
-        ensure_column("media", "original_name", "original_name TEXT")
-        ensure_column("media", "content_type", "content_type TEXT")
-        ensure_column("media", "size_bytes", "size_bytes INTEGER")
-        ensure_column("media", "created_at", "created_at TEXT")
-
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        capsule_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        r2_key TEXT NOT NULL,
+        original_name TEXT,
+        content_type TEXT,
+        size_bytes INTEGER,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+    )
+    """)
 
     con.commit()
     con.close()
@@ -203,7 +180,7 @@ def r2_client():
         region_name="auto",
         config=Config(
             signature_version="s3v4",
-            s3={"addressing_style": "path"},  # R2 için daha stabil
+            s3={"addressing_style": "path"},
         ),
     )
 
@@ -293,7 +270,7 @@ def admin_create(request: Request, p: str = Query(default="")):
     return HTMLResponse(
         f"""
         <div style="font-family:system-ui;padding:40px;max-width:840px">
-          <h2>Kapsül oluşturuldu </h2>
+          <h2>Kapsül oluşturuldu</h2>
           <p><b>Capsule ID:</b> {capsule_id}</p>
 
           <p><b>QR Link:</b></p>
@@ -509,8 +486,7 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
         )
 
     cur.execute(
-        """INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
-           VALUES(?,?,?,?,?,?,?)""",
+        "INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at) VALUES(?,?,?,?,?,?,?)",
         (capsule_id, "photo", key, original, file.content_type, len(data), now_utc_iso()),
     )
     con.commit()
@@ -568,8 +544,7 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
         )
 
     cur.execute(
-        """INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
-           VALUES(?,?,?,?,?,?,?)""",
+        "INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at) VALUES(?,?,?,?,?,?,?)",
         (capsule_id, "video", key, original, file.content_type, len(data), now_utc_iso()),
     )
     con.commit()
