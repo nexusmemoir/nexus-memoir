@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # app.py — NexusMemoir (clean + production-ish MVP)
 # - Session-based ownership (token URL'de kalmaz)
 # - Cloudflare R2 (S3 compatible) media storage (private bucket + presigned URL)
@@ -266,7 +268,7 @@ def admin_create(request: Request, p: str = Query(default="")):
         return HTMLResponse(
             """
             <div style="font-family:system-ui;padding:40px">
-              <h2>🚫 Yetkisiz</h2>
+              <h2>Yetkisiz</h2>
               <p>Kullanım: <code>/admin/create?p=ADMIN_PASSWORD</code></p>
             </div>
             """,
