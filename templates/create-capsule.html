@@ -100,16 +100,73 @@
         
         .map-container {
             width: 100%;
-            height: 500px;
+            height: 600px;
             border-radius: 16px;
             overflow: hidden;
             margin-bottom: 2rem;
-            border: 1px solid var(--border);
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.2);
         }
         
         #map {
             width: 100%;
             height: 100%;
+        }
+        
+        .zone-info {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            min-width: 200px;
+        }
+        
+        .zone-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .zone-name {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .zone-price {
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .zone-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid white;
         }
         
         .location-search {
@@ -270,6 +327,29 @@
                     <span>🔍</span>
                     <input type="text" id="locationSearch" placeholder="Şehir ara... (ör: Istanbul)">
                 </div>
+                <div class="zone-info">
+                    <div class="zone-label">Seçili Zone</div>
+                    <div class="zone-name" id="currentZoneName">Zone seç</div>
+                    <div class="zone-price" id="currentZonePrice">₺---</div>
+                    <div class="zone-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ef4444;"></div>
+                            <span>Premium - ₺1.500</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f59e0b;"></div>
+                            <span>Popular - ₺999</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #eab308;"></div>
+                            <span>Standard - ₺699</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #22c55e;"></div>
+                            <span>Basic - ₺499</span>
+                        </div>
+                    </div>
+                </div>
                 <div id="map"></div>
             </div>
 
@@ -348,19 +428,27 @@
             <div style="padding: 2rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 16px; margin-bottom: 2rem;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
                     <span>NexusMemoir Dijital Kapsül</span>
-                    <span style="font-weight: 700;">₺499</span>
+                    <span style="font-weight: 700;" id="paymentPrice">₺499</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                    <span>Zone:</span>
+                    <span id="paymentZone">-</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                    <span>Lokasyon:</span>
+                    <span id="paymentLocation">-</span>
                 </div>
                 <div style="padding-top: 1rem; border-top: 1px solid var(--border);">
-                    <div style="display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 800;">
+                    <div style="display: flex; justify-content: space-between; font-size: 1.5rem; font-weight: 800;">
                         <span>Toplam</span>
-                        <span>₺499</span>
+                        <span id="paymentTotal">₺499</span>
                     </div>
                 </div>
             </div>
 
             <div class="wizard-actions">
                 <button class="btn-back" onclick="prevStep(3)">← Geri</button>
-                <a href="https://shopier.com/PLACEHOLDER" class="btn-primary">
+                <a href="https://shopier.com/PLACEHOLDER" class="btn-primary" id="paymentButton">
                     <span>Ödeme Yap</span>
                     <span class="btn-arrow">→</span>
                 </a>
