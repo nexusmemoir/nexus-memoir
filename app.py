@@ -293,7 +293,7 @@ def admin_create(request: Request, p: str = Query(default="")):
     return HTMLResponse(
         f"""
         <div style="font-family:system-ui;padding:40px;max-width:840px">
-          <h2>🧠 Kapsül oluşturuldu ✅</h2>
+          <h2>Kapsül oluşturuldu </h2>
           <p><b>Capsule ID:</b> {capsule_id}</p>
 
           <p><b>QR Link:</b></p>
