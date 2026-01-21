@@ -20,9 +20,14 @@ import secrets
 import sqlite3
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+import traceback
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -44,6 +49,7 @@ ALLOWED_PHOTO = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_VIDEO = {"video/mp4", "video/webm", "video/quicktime"}  # mov=quicktime
 
 TZ_TR = ZoneInfo("Europe/Istanbul")
+
 
 
 def env_required(name: str) -> str:
@@ -173,18 +179,26 @@ def r2_client():
         aws_access_key_id=R2_ACCESS_KEY_ID,
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
         region_name="auto",
-        config=Config(signature_version="s3v4"),
+        config=Config(
+            signature_version="s3v4",
+            s3={"addressing_style": "path"},  # R2 için daha stabil
+        ),
     )
 
 
 def r2_put_bytes(key: str, data: bytes, content_type: str):
     s3 = r2_client()
-    s3.put_object(
-        Bucket=R2_BUCKET,
-        Key=key,
-        Body=data,
-        ContentType=content_type,
-    )
+    try:
+        s3.put_object(
+            Bucket=R2_BUCKET,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+        )
+    except (EndpointConnectionError, NoCredentialsError, ClientError) as e:
+        print("R2 PUT FAILED:", repr(e))
+        traceback.print_exc()
+        raise
 
 
 def r2_presigned_get(key: str, expires_sec: int = 600) -> str:
@@ -468,8 +482,19 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
     original = safe_filename(file.filename)
     key = f"capsules/{capsule_id}/photos/{secrets.token_urlsafe(16)}{ext}"
 
-    # Put to R2
-    r2_put_bytes(key=key, data=data, content_type=file.content_type)
+    # Put to R2 (with clear error)
+    try:
+        r2_put_bytes(
+            key=key,
+            data=data,
+            content_type=file.content_type,
+        )
+    except Exception:
+        con.close()
+        return HTMLResponse(
+            "Storage hatası: R2 upload başarısız. Konsolda/Render Logs'ta 'R2 PUT FAILED' satırına bak.",
+            status_code=502,
+        )
 
     # Save in DB
     cur.execute(
@@ -522,7 +547,19 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
     original = safe_filename(file.filename)
     key = f"capsules/{capsule_id}/videos/{secrets.token_urlsafe(16)}{ext}"
 
-    r2_put_bytes(key=key, data=data, content_type=file.content_type)
+    # Put to R2 (with clear error)
+    try:
+        r2_put_bytes(
+            key=key,
+            data=data,
+            content_type=file.content_type,
+        )
+    except Exception:
+        con.close()
+        return HTMLResponse(
+            "Storage hatası: R2 upload başarısız. Konsolda/Render Logs'ta 'R2 PUT FAILED' satırına bak.",
+            status_code=502,
+        )
 
     cur.execute(
         """INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
