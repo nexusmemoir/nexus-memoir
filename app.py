@@ -155,12 +155,18 @@ def init_db():
     )
     """)
 
-    # Create or migrate media table
+    # Check if media table needs recreation
     existing_cols = get_table_columns(cur, "media")
     
-    if not existing_cols:
-        # Table doesn't exist - create new one
-        print("[DB] Creating media table with new schema...")
+    # If old schema detected (has 'path' column), recreate table
+    if 'path' in existing_cols:
+        print("[DB] Old media schema detected with 'path' column - recreating table...")
+        
+        # Drop old table
+        cur.execute("DROP TABLE IF EXISTS media")
+        print("[DB] Old media table dropped")
+        
+        # Create new table
         cur.execute("""
         CREATE TABLE media (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -174,27 +180,27 @@ def init_db():
             FOREIGN KEY(capsule_id) REFERENCES capsules(id)
         )
         """)
-    else:
-        # Table exists - check if migration needed
-        required_cols = {'id', 'capsule_id', 'kind', 'r2_key', 'original_name', 'content_type', 'size_bytes', 'created_at'}
-        missing_cols = required_cols - existing_cols
+        print("[DB] New media table created with r2_key schema")
         
-        if missing_cols:
-            print(f"[DB] Migrating media table - adding columns: {missing_cols}")
-            
-            # Add missing columns one by one
-            if 'r2_key' in missing_cols:
-                cur.execute("ALTER TABLE media ADD COLUMN r2_key TEXT")
-            if 'original_name' in missing_cols:
-                cur.execute("ALTER TABLE media ADD COLUMN original_name TEXT")
-            if 'content_type' in missing_cols:
-                cur.execute("ALTER TABLE media ADD COLUMN content_type TEXT")
-            if 'size_bytes' in missing_cols:
-                cur.execute("ALTER TABLE media ADD COLUMN size_bytes INTEGER")
-            if 'created_at' in missing_cols:
-                cur.execute("ALTER TABLE media ADD COLUMN created_at TEXT")
-            
-            print("[DB] Migration completed!")
+    elif not existing_cols:
+        # Table doesn't exist - create new one
+        print("[DB] Creating media table...")
+        cur.execute("""
+        CREATE TABLE media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            capsule_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            r2_key TEXT NOT NULL,
+            original_name TEXT,
+            content_type TEXT,
+            size_bytes INTEGER,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+        )
+        """)
+        print("[DB] Media table created")
+    else:
+        print("[DB] Media table schema is up to date")
 
     con.commit()
     con.close()
