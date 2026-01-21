@@ -5,9 +5,226 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kapsül Oluştur - NexusMemoir</title>
     <link rel="icon" type="image/png" href="/static/images/nexusmemoir-logo.png">
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
     <link rel="stylesheet" href="/static/css/app.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
+    <link rel="stylesheet" href="/static/css/create-sync.css">
+</head>
+<body>
+    <canvas id="neuralBg"></canvas>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="logo-icon" style="width: 32px; height: 32px;">
+                <span class="logo-text">NexusMemoir</span>
+            </div>
+            <div class="nav-actions">
+                <a href="/" class="btn-logout">Ana Sayfa</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="create-container">
+        <!-- Wizard Header -->
+        <div class="wizard-header">
+            <h1 class="wizard-title">Kapsülünü Oluştur</h1>
+            <p class="wizard-subtitle">4 basit adımda anılarını dünyaya göm</p>
+        </div>
+
+        <!-- Progress -->
+        <div class="wizard-progress">
+            <div class="progress-step active" data-step="1">
+                <div class="progress-number">1</div>
+                <div class="progress-label">Lokasyon</div>
+            </div>
+            <div class="progress-step" data-step="2">
+                <div class="progress-number">2</div>
+                <div class="progress-label">Bilgiler</div>
+            </div>
+            <div class="progress-step" data-step="3">
+                <div class="progress-number">3</div>
+                <div class="progress-label">İçerik</div>
+            </div>
+            <div class="progress-step" data-step="4">
+                <div class="progress-number">4</div>
+                <div class="progress-label">Ödeme</div>
+            </div>
+        </div>
+
+        <!-- Step 1: Location with Dig Animation -->
+        <div class="wizard-step active" id="step1">
+            <h2>📍 Kapsülünü Nereye Gömmek İstersin?</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Haritada bir noktaya tıkla, kazma animasyonu ile kapsülünü göm!
+            </p>
+            
+            <div class="map-wrapper">
+                <!-- Zone Info Card -->
+                <div class="zone-info-card">
+                    <div class="zone-label">Seçili Zone</div>
+                    <div class="zone-name" id="currentZoneName">Yer seç</div>
+                    <div class="zone-price" id="currentZonePrice">₺---</div>
+                    <div class="zone-legend-mini">
+                        <div class="legend-mini-item">
+                            <div class="legend-mini-dot" style="background: #ff6b9d;"></div>
+                            <span>Premium ₺1.500</span>
+                        </div>
+                        <div class="legend-mini-item">
+                            <div class="legend-mini-dot" style="background: #ffa94d;"></div>
+                            <span>Popular ₺999</span>
+                        </div>
+                        <div class="legend-mini-item">
+                            <div class="legend-mini-dot" style="background: #ffd93d;"></div>
+                            <span>Standard ₺699</span>
+                        </div>
+                        <div class="legend-mini-item">
+                            <div class="legend-mini-dot" style="background: #95e1d3;"></div>
+                            <span>Basic ₺499</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Box -->
+                <div class="location-search-box">
+                    <span>🔍</span>
+                    <input type="text" id="locationSearch" placeholder="Şehir ara... (ör: Istanbul)">
+                </div>
+
+                <!-- Map Container -->
+                <div id="createMap" class="create-map"></div>
+
+                <!-- Dig Animation Overlay -->
+                <div id="digAnimation" class="dig-animation-overlay" style="display: none;">
+                    <div class="shovel">🏗️</div>
+                    <div class="dirt-particles">
+                        <span class="dirt">💨</span>
+                        <span class="dirt">💨</span>
+                        <span class="dirt">💨</span>
+                    </div>
+                    <div class="dig-text">Gömülüyor...</div>
+                </div>
+            </div>
+
+            <div id="selectedLocation" class="selected-location" style="display: none;">
+                <div class="selected-location-title">✅ Lokasyon Seçildi:</div>
+                <div id="locationName" style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">-</div>
+                <div class="selected-location-coords" id="locationCoords">-</div>
+            </div>
+
+            <div class="wizard-actions">
+                <a href="/" class="btn-back">İptal</a>
+                <button class="btn-primary" onclick="nextStep(2)" id="continueBtn" disabled>
+                    <span>Devam Et</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Info -->
+        <div class="wizard-step" id="step2">
+            <h2>✏️ Kapsülüne İsim Ver</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Kapsülün haritada bu isimle görünecek
+            </p>
+
+            <div class="form-group">
+                <label class="form-label">Kapsül İsmi</label>
+                <input type="text" class="form-input" id="capsuleTitle" placeholder='ör: "Ela\'nın İlk Adımları"' maxlength="50">
+                <div class="form-hint">Maksimum 50 karakter</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Açılış Tarihi</label>
+                <input type="datetime-local" class="form-input" id="unlockDate">
+                <div class="form-hint">Kapsülün hangi tarihte açılacağını belirle (Türkiye saati)</div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(1)">← Geri</button>
+                <button class="btn-primary" onclick="nextStep(3)">
+                    <span>Devam Et</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Content Preview -->
+        <div class="wizard-step" id="step3">
+            <h2>📝 İçerik Ekle</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Bu adım ödeme sonrası aktif olacak
+            </p>
+
+            <div class="capsule-preview">
+                <div class="preview-balloon">
+                    <div class="preview-balloon-content">
+                        <div class="preview-title" id="previewTitle">Kapsül İsmi</div>
+                        <div class="preview-date" id="previewDate">Açılış Tarihi</div>
+                        <div class="preview-status">🔒 Kilitli</div>
+                    </div>
+                    <div class="preview-balloon-pointer"></div>
+                    <div class="preview-balloon-pin"></div>
+                </div>
+                <p style="text-align: center; color: var(--text-secondary); margin-top: 2rem;">
+                    Kapsülün haritada böyle görünecek!
+                </p>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(2)">← Geri</button>
+                <button class="btn-primary" onclick="nextStep(4)">
+                    <span>Ödemeye Geç</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Payment -->
+        <div class="wizard-step" id="step4">
+            <h2>💳 Ödeme</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Güvenli ödeme sayfasına yönlendirileceksin
+            </p>
+
+            <div class="payment-summary">
+                <div class="payment-item">
+                    <span>NexusMemoir Dijital Kapsül</span>
+                    <span class="payment-price" id="paymentPrice">₺499</span>
+                </div>
+                <div class="payment-detail">
+                    <span>Zone:</span>
+                    <span id="paymentZone">-</span>
+                </div>
+                <div class="payment-detail">
+                    <span>Lokasyon:</span>
+                    <span id="paymentLocation">-</span>
+                </div>
+                <div class="payment-detail">
+                    <span>Kapsül:</span>
+                    <span id="paymentTitle">-</span>
+                </div>
+                <div class="payment-total">
+                    <span>Toplam</span>
+                    <span class="payment-total-amount" id="paymentTotal">₺499</span>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(3)">← Geri</button>
+                <a href="https://shopier.com/PLACEHOLDER" class="btn-primary" id="paymentButton">
+                    <span>Ödeme Yap</span>
+                    <span class="btn-arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <script src="/static/js/neural-bg.js"></script>
+    <script src="/static/js/create-sync.js"></script>
+</body>
+</html>
         .create-container {
             position: relative;
             max-width: 1200px;
