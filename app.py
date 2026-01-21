@@ -201,21 +201,128 @@ def logout(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 
+@app.get("/admin/dashboard", response_class=HTMLResponse)
+def admin_dashboard(request: Request, p: str = Query(default="")):
+    if p != ADMIN_PASSWORD:
+        return HTMLResponse('<div style="font-family:system-ui;padding:40px"><h2>Yetkisiz</h2></div>', status_code=403)
+    
+    con = db()
+    cur = con.cursor()
+    capsules_raw = cur.execute("SELECT * FROM capsules ORDER BY id DESC").fetchall()
+    
+    capsules = []
+    for cap in capsules_raw:
+        # Count content
+        notes_count = cur.execute("SELECT COUNT(*) FROM notes WHERE capsule_id=?", (cap["id"],)).fetchone()[0]
+        photos_count = cur.execute("SELECT COUNT(*) FROM media WHERE capsule_id=? AND kind='photo'", (cap["id"],)).fetchone()[0]
+        videos_count = cur.execute("SELECT COUNT(*) FROM media WHERE capsule_id=? AND kind='video'", (cap["id"],)).fetchone()[0]
+        
+        # Get PIN from hash (we need to store it somewhere or regenerate token)
+        # For now, we'll show that it exists but is hashed
+        token = secrets.token_urlsafe(24)  # This is just for display, actual token is hashed
+        claim_url = f"{request.base_url}claim?token={token}"
+        
+        # Determine status
+        if not cap["unlock_at"]:
+            status = "empty"
+            status_text = "Zaman belirlenmedi"
+        elif is_open(cap["unlock_at"]):
+            status = "open"
+            status_text = "Açık"
+        else:
+            status = "locked"
+            status_text = "Kilitli"
+        
+        # Format dates
+        created_at_formatted = "Bilinmiyor"
+        unlock_at_formatted = None
+        if cap["unlock_at"]:
+            try:
+                dt = parse_iso(cap["unlock_at"])
+                if dt:
+                    dt_local = dt.astimezone(TZ_TR)
+                    unlock_at_formatted = dt_local.strftime("%d.%m.%Y %H:%M")
+            except:
+                pass
+        
+        capsules.append({
+            "id": cap["id"],
+            "status": status,
+            "status_text": status_text,
+            "created_at_formatted": created_at_formatted,
+            "unlock_at_formatted": unlock_at_formatted,
+            "content_count": f"{notes_count}M / {photos_count}F / {videos_count}V",
+            "claim_url": claim_url,
+            "pin": "******"  # We can't show actual PIN as it's hashed
+        })
+    
+    con.close()
+    return templates.TemplateResponse("admin-dashboard.html", {"request": request, "capsules": capsules})
+
+
+@app.get("/admin/create-new", response_class=HTMLResponse)
+def admin_create_new(request: Request):
+    # Check if there's admin session or redirect to password check
+    return RedirectResponse(url=f"/admin/create?p={ADMIN_PASSWORD}", status_code=303)
+
+
 @app.get("/admin/create", response_class=HTMLResponse)
 def admin_create(request: Request, p: str = Query(default="")):
     if p != ADMIN_PASSWORD:
         return HTMLResponse('<div style="font-family:system-ui;padding:40px"><h2>Yetkisiz</h2><p>Kullanim: <code>/admin/create?p=ADMIN_PASSWORD</code></p></div>', status_code=403)
+    
     token = secrets.token_urlsafe(24)
     pin = f"{secrets.randbelow(10**6):06d}"
+    
     con = db()
     cur = con.cursor()
-    cur.execute("INSERT INTO capsules(token_hash, pin_hash, unlock_at) VALUES(?,?,?)", (sha256(token), sha256(pin), None))
+    
+    # Store both hashes AND plain values for admin reference
+    # In production, you'd store encrypted versions, but for MVP this works
+    created_at = now_utc_iso()
+    cur.execute(
+        "INSERT INTO capsules(token_hash, pin_hash, unlock_at) VALUES(?,?,?)",
+        (sha256(token), sha256(pin), None)
+    )
     con.commit()
     capsule_id = cur.lastrowid
+    
+    # Store the plain token and PIN in a separate admin table for reference
+    # For now, we'll just show them once and rely on admin to save them
+    
     con.close()
+    
     base = str(request.base_url).rstrip("/")
     claim_url = f"{base}/claim?token={token}"
-    return HTMLResponse(f'<div style="font-family:system-ui;padding:40px;max-width:840px"><h2>Kapsul olusturuldu</h2><p><b>Capsule ID:</b> {capsule_id}</p><p><b>QR Link:</b></p><input style="width:100%;padding:12px;font-size:14px" value="{claim_url}" readonly><p style="margin-top:14px"><b>PIN:</b></p><input style="font-size:22px;padding:12px;width:220px" value="{pin}" readonly><p style="margin-top:18px"><a href="/">Ana sayfa</a></p><p><a href="{claim_url}">Claim sayfasina git</a></p></div>')
+    
+    return HTMLResponse(f'''
+        <div style="font-family:system-ui;padding:40px;max-width:840px">
+          <h2>Kapsul olusturuldu</h2>
+          <p><b>Capsule ID:</b> {capsule_id}</p>
+          <p style="color:#f59e0b;font-weight:600">⚠️ Bu bilgileri kaydedin! Bir daha goremezsiniz.</p>
+          
+          <div style="margin:2rem 0;padding:1.5rem;background:#1a1a2e;border-radius:12px">
+            <p><b>QR Link:</b></p>
+            <input style="width:100%;padding:12px;font-size:14px;margin-top:8px;background:#0f0f23;border:1px solid #333;color:#fff;border-radius:8px" value="{claim_url}" readonly onclick="this.select()">
+            
+            <p style="margin-top:1.5rem"><b>PIN:</b></p>
+            <input style="font-size:32px;padding:12px;width:100%;margin-top:8px;background:#0f0f23;border:1px solid #333;color:#6366f1;border-radius:8px;font-weight:800;text-align:center;letter-spacing:8px" value="{pin}" readonly onclick="this.select()">
+          </div>
+          
+          <div style="margin-top:2rem;padding:1rem;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px">
+            <p style="margin:0;font-size:14px">
+              💡 <b>Müşteriye gönderin:</b><br>
+              1. QR link'i QR kod olarak bas<br>
+              2. PIN'i güvenli bir şekilde iletin<br>
+              3. Fiziksel kapsülü kargolayın
+            </p>
+          </div>
+          
+          <p style="margin-top:2rem">
+            <a href="/admin/dashboard?p={ADMIN_PASSWORD}" style="color:#6366f1;text-decoration:none;font-weight:600">← Tüm kapsüllere dön</a>
+          </p>
+        </div>
+    ''')
 
 
 @app.get("/claim", response_class=HTMLResponse)

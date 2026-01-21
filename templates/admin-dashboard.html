@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - NexusMemoir</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <style>
+        .admin-container {
+            position: relative;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem;
+            z-index: 1;
+        }
+        
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+        
+        .admin-title {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+        
+        .admin-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .capsules-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .capsule-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+        
+        .capsule-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+        
+        .capsule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+        }
+        
+        .capsule-id {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .capsule-status {
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .status-empty {
+            background: rgba(99, 102, 241, 0.1);
+            color: #6366f1;
+        }
+        
+        .status-locked {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+        
+        .status-open {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+        
+        .capsule-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .info-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .info-value {
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: monospace;
+        }
+        
+        .capsule-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .btn-view {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: var(--text-primary);
+        }
+        
+        .btn-view:hover {
+            background: rgba(99, 102, 241, 0.2);
+        }
+        
+        .btn-copy {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        
+        .btn-copy:hover {
+            background: rgba(139, 92, 246, 0.2);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+        
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="neuralBg"></canvas>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <div class="logo-icon">🧠</div>
+                <span class="logo-text">NexusMemoir Admin</span>
+            </div>
+            <div class="nav-actions">
+                <a href="/" class="btn-logout">Ana Sayfa</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-container">
+        <!-- Header -->
+        <div class="admin-header">
+            <div>
+                <h1 class="admin-title">Tüm Kapsüller</h1>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                    Toplam {{ capsules|length }} kapsül
+                </p>
+            </div>
+            <div class="admin-actions">
+                <a href="/admin/create-new" class="btn-primary">
+                    <span>+ Yeni Kapsül</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Capsules Grid -->
+        {% if capsules %}
+        <div class="capsules-grid">
+            {% for cap in capsules %}
+            <div class="capsule-card">
+                <div class="capsule-header">
+                    <div class="capsule-id">Kapsül #{{ cap.id }}</div>
+                    <div class="capsule-status status-{{ cap.status }}">
+                        {{ cap.status_text }}
+                    </div>
+                </div>
+
+                <div class="capsule-info">
+                    <div class="info-item">
+                        <span class="info-label">📅 Oluşturulma</span>
+                        <span class="info-value">{{ cap.created_at_formatted }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">🔓 Açılış Tarihi</span>
+                        <span class="info-value">{{ cap.unlock_at_formatted or 'Belirlenmedi' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">📝 İçerik</span>
+                        <span class="info-value">{{ cap.content_count }}</span>
+                    </div>
+                </div>
+
+                <div class="capsule-actions">
+                    <button class="btn-small btn-copy" onclick="copyToClipboard('{{ cap.claim_url }}', this)">
+                        📋 QR Link Kopyala
+                    </button>
+                    <button class="btn-small btn-copy" onclick="copyToClipboard('{{ cap.pin }}', this)">
+                        🔑 PIN Kopyala ({{ cap.pin }})
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📦</div>
+            <h2>Henüz kapsül yok</h2>
+            <p style="color: var(--text-secondary); margin: 1rem 0 2rem;">
+                İlk kapsülünüzü oluşturmak için yukarıdaki butona tıklayın
+            </p>
+            <a href="/admin/create-new" class="btn-primary">
+                <span>+ Yeni Kapsül Oluştur</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="/static/js/neural-bg.js"></script>
+    <script>
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '✅ Kopyalandı!';
+                button.style.background = 'rgba(16, 185, 129, 0.2)';
+                button.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = '';
+                    button.style.borderColor = '';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
