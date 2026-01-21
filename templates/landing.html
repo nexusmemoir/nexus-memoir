@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusMemoir - Zamanı Kilitle. Anıları Sakla.</title>
+    <link rel="stylesheet" href="/static/css/landing.css">
+</head>
+<body>
+    <!-- Neural Network Background Canvas -->
+    <canvas id="neuralBg"></canvas>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <div class="logo-icon">🧠</div>
+                <span class="logo-text">NexusMemoir</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Özellikler</a>
+                <a href="#how-it-works">Nasıl Çalışır</a>
+                <a href="/admin/create?p={{ admin_password }}" class="btn-demo">Demo Dene</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-icon">⚡</span>
+                <span>Sinir ağlarıyla güçlendirilmiş anı kasası</span>
+            </div>
+            <h1 class="hero-title">
+                Zamanı Kilitle.<br>
+                <span class="gradient-text">Zihnini Sakla.</span>
+            </h1>
+            <p class="hero-subtitle">
+                Anılarınızı, düşüncelerinizi ve özel anlarınızı geleceğe taşıyın.
+                Neural-inspired teknoloji ile güvenli, zamana bağlı dijital kapsüller oluşturun.
+            </p>
+            <div class="hero-cta">
+                <a href="/admin/create?p={{ admin_password }}" class="btn-primary">
+                    <span>Kapsül Oluştur</span>
+                    <span class="btn-arrow">→</span>
+                </a>
+                <a href="#how-it-works" class="btn-secondary">
+                    <span>Nasıl Çalışır?</span>
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-number">5</div>
+                    <div class="stat-label">Metin Notu</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-number">10</div>
+                    <div class="stat-label">Fotoğraf</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-number">1</div>
+                    <div class="stat-label">Video</div>
+                </div>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="capsule-3d">
+                <div class="capsule-inner">
+                    <div class="capsule-glow"></div>
+                    <div class="neural-nodes">
+                        <div class="node node-1"></div>
+                        <div class="node node-2"></div>
+                        <div class="node node-3"></div>
+                        <div class="node node-4"></div>
+                        <div class="node node-5"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="section-header">
+            <h2 class="section-title">Nöral Hafıza Sistemi</h2>
+            <p class="section-subtitle">İnsan beyninin çalışma prensibinden ilham alan güvenli saklama</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Zamana Kilitli</h3>
+                <p>Belirlediğiniz tarihe kadar içerik tamamen kilitli kalır. Sinir ağları gibi, anılar zamanla olgunlaşır.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🧬</div>
+                <h3>Güvenli Saklama</h3>
+                <p>Cloudflare R2 ile verileriniz dünyanın dört bir yanında şifrelenmiş olarak saklanır.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📸</div>
+                <h3>Çoklu Format</h3>
+                <p>Metin notları, fotoğraflar ve videolar. Tüm anılarınız bir arada.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>PIN Korumalı</h3>
+                <p>QR kod ve benzersiz PIN ile sadece siz erişebilirsiniz. Neural güvenlik katmanı.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Anında Erişim</h3>
+                <p>Zaman geldiğinde kapsülünüz otomatik açılır. Countdown ile geri sayım yapın.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3>Her Yerden</h3>
+                <p>QR kodu okutun, PIN'i girin ve anılarınıza her cihazdan ulaşın.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="section-header">
+            <h2 class="section-title">Nasıl Çalışır?</h2>
+            <p class="section-subtitle">3 basit adımda anılarınızı geleceğe gönderin</p>
+        </div>
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">01</div>
+                <div class="step-content">
+                    <h3>Kapsül Oluştur</h3>
+                    <p>Yeni bir dijital kapsül oluşturun. Benzersiz QR kod ve PIN alın.</p>
+                </div>
+                <div class="step-visual">
+                    <div class="step-icon">📦</div>
+                </div>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-number">02</div>
+                <div class="step-content">
+                    <h3>İçerik Ekle</h3>
+                    <p>Metinler, fotoğraflar ve video yükleyin. Açılma tarihini belirleyin.</p>
+                </div>
+                <div class="step-visual">
+                    <div class="step-icon">✍️</div>
+                </div>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-number">03</div>
+                <div class="step-content">
+                    <h3>Kilitle & Bekle</h3>
+                    <p>Kapsülünüz kilitlenir. Belirlenen tarihte otomatik olarak açılır.</p>
+                </div>
+                <div class="step-visual">
+                    <div class="step-icon">⏰</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <h2>Bugünün Anılarını Yarına Taşı</h2>
+            <p>İlk kapsülünüzü şimdi oluşturun ve geleceğe mesaj gönderin</p>
+            <a href="/admin/create?p={{ admin_password }}" class="btn-primary btn-large">
+                <span>Hemen Başla</span>
+                <span class="btn-arrow">→</span>
+            </a>
+        </div>
+        <div class="cta-particles"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="logo">
+                    <div class="logo-icon">🧠</div>
+                    <span class="logo-text">NexusMemoir</span>
+                </div>
+                <p>Zamanı kilitle. Zihnini sakla.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-column">
+                    <h4>Ürün</h4>
+                    <a href="#features">Özellikler</a>
+                    <a href="#how-it-works">Nasıl Çalışır</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Destek</h4>
+                    <a href="#">SSS</a>
+                    <a href="#">İletişim</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 NexusMemoir. Neural-inspired memory capsules.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/neural-bg.js"></script>
+</body>
+</html>

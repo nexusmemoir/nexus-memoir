@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
-# app.py â€” NexusMemoir (clean + production-ish MVP)
+# app.py — NexusMemoir (clean + production-ish MVP)
 # - Session-based ownership (token URL'de kalmaz)
 # - Cloudflare R2 (S3 compatible) media storage (private bucket + presigned URL)
-# - SQLite DB (Render'da kalÄ±cÄ±lÄ±k iÃ§in persistent disk Ã¶nerilir)
+# - SQLite DB (Render'da kalıcılık için persistent disk önerilir)
 # - Limits: 5 notes, 10 photos, 1 video
 #
 # ENV (Render -> Environment):
 #   SECRET_KEY               (zorunlu, uzun rastgele)
-#   ADMIN_PASSWORD           (zorunlu, /admin/create?p=... iÃ§in)
+#   ADMIN_PASSWORD           (zorunlu, /admin/create?p=... için)
 #   R2_ENDPOINT              (zorunlu)  https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 #   R2_ACCESS_KEY_ID         (zorunlu)
 #   R2_SECRET_ACCESS_KEY     (zorunlu)
 #   R2_BUCKET                (zorunlu)  nexusmemoir-media
-#   DB_PATH                  (opsiyonel) /var/data/db.sqlite3 (persistent disk Ã¶nerilir)
+#   DB_PATH                  (opsiyonel) /var/data/db.sqlite3 (persistent disk önerilir)
 
 import os
 import re
@@ -33,7 +33,6 @@ from botocore.exceptions import ClientError, EndpointConnectionError, NoCredenti
 from fastapi import FastAPI, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 
@@ -75,7 +74,6 @@ DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "db.sqlit
 # App
 # -------------------------
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
@@ -84,7 +82,6 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 # DB helpers
 # -------------------------
 def db():
-    # check_same_thread=False: FastAPI async ortamda daha stabil olabilir
     con = sqlite3.connect(DB_PATH, check_same_thread=False)
     con.row_factory = sqlite3.Row
     return con
@@ -124,22 +121,20 @@ def safe_filename(name: str) -> str:
     return name[:120]
 
 
-def _table_exists(cur, name: str) -> bool:
-    return cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-        (name,),
-    ).fetchone() is not None
-
-
-def _table_columns(cur, table: str) -> set[str]:
-    rows = cur.execute(f"PRAGMA table_info({table})").fetchall()
-    return {r["name"] for r in rows}
+def get_table_columns(cur, table: str) -> set[str]:
+    """Get all column names from a table"""
+    try:
+        rows = cur.execute(f"PRAGMA table_info({table})").fetchall()
+        return {r["name"] for r in rows}
+    except:
+        return set()
 
 
 def init_db():
     con = db()
     cur = con.cursor()
 
+    # Create capsules table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS capsules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,6 +144,7 @@ def init_db():
     )
     """)
 
+    # Create notes table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,33 +155,56 @@ def init_db():
     )
     """)
 
-    # Yeni ÅŸema (r2_key var)
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS media (
-         # ---- SAFE migration (never crash app on old DBs) ----
-    def ensure_column(table: str, col: str, ddl: str):
-        try:
-            cols = {r["name"] for r in cur.execute(f"PRAGMA table_info({table})").fetchall()}
-            if col in cols:
-                return
-            cur.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
-        except sqlite3.OperationalError as e:
-            # "duplicate column name" gibi durumlarda crash etme
-            print(f"[MIGRATION] skip {table}.{col}: {e}")
-
-    # media tablosu eskiyse kolonlarÄ± ekle
-    if cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='media'").fetchone():
-        ensure_column("media", "capsule_id", "capsule_id INTEGER")
-        ensure_column("media", "kind", "kind TEXT")
-        ensure_column("media", "r2_key", "r2_key TEXT")
-        ensure_column("media", "original_name", "original_name TEXT")
-        ensure_column("media", "content_type", "content_type TEXT")
-        ensure_column("media", "size_bytes", "size_bytes INTEGER")
-        ensure_column("media", "created_at", "created_at TEXT")
-
+    # Check if media table needs recreation
+    existing_cols = get_table_columns(cur, "media")
+    
+    # If old schema detected (has 'path' column), recreate table
+    if 'path' in existing_cols:
+        print("[DB] Old media schema detected with 'path' column - recreating table...")
+        
+        # Drop old table
+        cur.execute("DROP TABLE IF EXISTS media")
+        print("[DB] Old media table dropped")
+        
+        # Create new table
+        cur.execute("""
+        CREATE TABLE media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            capsule_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            r2_key TEXT NOT NULL,
+            original_name TEXT,
+            content_type TEXT,
+            size_bytes INTEGER,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+        )
+        """)
+        print("[DB] New media table created with r2_key schema")
+        
+    elif not existing_cols:
+        # Table doesn't exist - create new one
+        print("[DB] Creating media table...")
+        cur.execute("""
+        CREATE TABLE media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            capsule_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            r2_key TEXT NOT NULL,
+            original_name TEXT,
+            content_type TEXT,
+            size_bytes INTEGER,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+        )
+        """)
+        print("[DB] Media table created")
+    else:
+        print("[DB] Media table schema is up to date")
 
     con.commit()
     con.close()
+    print("[DB] Database initialized successfully!")
 
 
 @app.on_event("startup")
@@ -205,7 +224,7 @@ def r2_client():
         region_name="auto",
         config=Config(
             signature_version="s3v4",
-            s3={"addressing_style": "path"},  # R2 iÃ§in daha stabil
+            s3={"addressing_style": "path"},
         ),
     )
 
@@ -253,11 +272,8 @@ def count_videos(cur, capsule_id: int) -> int:
 # Pages
 # -------------------------
 @app.get("/", response_class=HTMLResponse)
-def landing_page(request: Request):
-    return templates.TemplateResponse("landing.html", {
-        "request": request,
-        "admin_password": ADMIN_PASSWORD
-    })
+def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/logout")
@@ -273,7 +289,7 @@ def admin_create(request: Request, p: str = Query(default="")):
             """
             <div style="font-family:system-ui;padding:40px">
               <h2>Yetkisiz</h2>
-              <p>KullanÄ±m: <code>/admin/create?p=ADMIN_PASSWORD</code></p>
+              <p>Kullanım: <code>/admin/create?p=ADMIN_PASSWORD</code></p>
             </div>
             """,
             status_code=403,
@@ -298,7 +314,7 @@ def admin_create(request: Request, p: str = Query(default="")):
     return HTMLResponse(
         f"""
         <div style="font-family:system-ui;padding:40px;max-width:840px">
-          <h2>KapsÃ¼l oluÅŸturuldu </h2>
+          <h2>Kapsül oluşturuldu</h2>
           <p><b>Capsule ID:</b> {capsule_id}</p>
 
           <p><b>QR Link:</b></p>
@@ -308,7 +324,7 @@ def admin_create(request: Request, p: str = Query(default="")):
           <input style="font-size:22px;padding:12px;width:220px" value="{pin}" readonly>
 
           <p style="margin-top:18px"><a href="/">Ana sayfa</a></p>
-          <p><a href="{claim_url}">Claim sayfasÄ±na git</a></p>
+          <p><a href="{claim_url}">Claim sayfasına git</a></p>
         </div>
         """
     )
@@ -329,7 +345,7 @@ def claim_submit(request: Request, token: str = Form(...), pin: str = Form(...))
     if (not row) or (row["pin_hash"] != sha256(pin)):
         return templates.TemplateResponse(
             "claim.html",
-            {"request": request, "token": token, "error": "Token veya PIN hatalÄ±."},
+            {"request": request, "token": token, "error": "Token veya PIN hatalı."},
             status_code=400,
         )
 
@@ -408,7 +424,7 @@ def set_unlock(request: Request, unlock_at: str = Form(...)):
         dt_local = dt_local_naive.replace(tzinfo=TZ_TR)
         dt_utc = dt_local.astimezone(timezone.utc)
     except Exception:
-        return HTMLResponse("Tarih formatÄ± hatalÄ±.", status_code=400)
+        return HTMLResponse("Tarih formatı hatalı.", status_code=400)
 
     con = db()
     cur = con.cursor()
@@ -420,7 +436,7 @@ def set_unlock(request: Request, unlock_at: str = Form(...)):
 
     if is_open(cap["unlock_at"]):
         con.close()
-        return HTMLResponse("KapsÃ¼l aÃ§Ä±lmÄ±ÅŸ, zaman deÄŸiÅŸtirilemez.", status_code=400)
+        return HTMLResponse("Kapsül açılmış, zaman değiştirilemez.", status_code=400)
 
     cur.execute("UPDATE capsules SET unlock_at=? WHERE id=?", (dt_utc.isoformat(), capsule_id))
     con.commit()
@@ -437,7 +453,7 @@ def add_note(request: Request, text: str = Form(...)):
 
     txt = (text or "").strip()
     if not txt:
-        return HTMLResponse("BoÅŸ metin eklenemez.", status_code=400)
+        return HTMLResponse("Boş metin eklenemez.", status_code=400)
 
     con = db()
     cur = con.cursor()
@@ -449,7 +465,7 @@ def add_note(request: Request, text: str = Form(...)):
 
     if is_open(cap["unlock_at"]):
         con.close()
-        return HTMLResponse("KapsÃ¼l aÃ§Ä±lmÄ±ÅŸ, artÄ±k metin eklenemez.", status_code=400)
+        return HTMLResponse("Kapsül açılmış, artık metin eklenemez.", status_code=400)
 
     if count_notes(cur, capsule_id) >= MAX_NOTES:
         con.close()
@@ -472,7 +488,7 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
         return RedirectResponse(url="/", status_code=303)
 
     if file.content_type not in ALLOWED_PHOTO:
-        return HTMLResponse("GeÃ§ersiz foto formatÄ±. (jpg/png/webp)", status_code=400)
+        return HTMLResponse("Geçersiz foto formatı. (jpg/png/webp)", status_code=400)
 
     con = db()
     cur = con.cursor()
@@ -484,7 +500,7 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
 
     if is_open(cap["unlock_at"]):
         con.close()
-        return HTMLResponse("KapsÃ¼l aÃ§Ä±lmÄ±ÅŸ, artÄ±k foto yÃ¼klenemez.", status_code=400)
+        return HTMLResponse("Kapsül açılmış, artık foto yüklenemez.", status_code=400)
 
     if count_photos(cur, capsule_id) >= MAX_PHOTOS:
         con.close()
@@ -493,7 +509,7 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
     data = await file.read()
     if len(data) > MAX_PHOTO_BYTES:
         con.close()
-        return HTMLResponse("Foto Ã§ok bÃ¼yÃ¼k (max 10MB).", status_code=400)
+        return HTMLResponse("Foto çok büyük (max 10MB).", status_code=400)
 
     ext = ".jpg"
     if file.content_type == "image/png":
@@ -506,16 +522,15 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
 
     try:
         r2_put_bytes(key=key, data=data, content_type=file.content_type)
-    except Exception:
+    except Exception as e:
         con.close()
         return HTMLResponse(
-            "Storage hatasÄ±: R2 upload baÅŸarÄ±sÄ±z. Konsolda/Render Logs'ta 'R2 PUT FAILED' satÄ±rÄ±na bak.",
+            f"Storage hatası: {type(e).__name__}: {str(e)}",
             status_code=502,
         )
 
     cur.execute(
-        "INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
-           VALUES(?,?,?,?,?,?,?)",
+        "INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at) VALUES(?,?,?,?,?,?,?)",
         (capsule_id, "photo", key, original, file.content_type, len(data), now_utc_iso()),
     )
     con.commit()
@@ -531,7 +546,7 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
         return RedirectResponse(url="/", status_code=303)
 
     if file.content_type not in ALLOWED_VIDEO:
-        return HTMLResponse("GeÃ§ersiz video formatÄ±. (mp4/webm/mov)", status_code=400)
+        return HTMLResponse("Geçersiz video formatı. (mp4/webm/mov)", status_code=400)
 
     con = db()
     cur = con.cursor()
@@ -543,7 +558,7 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
 
     if is_open(cap["unlock_at"]):
         con.close()
-        return HTMLResponse("KapsÃ¼l aÃ§Ä±lmÄ±ÅŸ, artÄ±k video yÃ¼klenemez.", status_code=400)
+        return HTMLResponse("Kapsül açılmış, artık video yüklenemez.", status_code=400)
 
     if count_videos(cur, capsule_id) >= MAX_VIDEOS:
         con.close()
@@ -552,7 +567,7 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
     data = await file.read()
     if len(data) > MAX_VIDEO_BYTES:
         con.close()
-        return HTMLResponse("Video Ã§ok bÃ¼yÃ¼k (max 80MB).", status_code=400)
+        return HTMLResponse("Video çok büyük (max 80MB).", status_code=400)
 
     ext = ".mp4"
     if file.content_type == "video/webm":
@@ -565,16 +580,15 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
 
     try:
         r2_put_bytes(key=key, data=data, content_type=file.content_type)
-    except Exception:
+    except Exception as e:
         con.close()
         return HTMLResponse(
-            "Storage hatasÄ±: R2 upload baÅŸarÄ±sÄ±z. Konsolda/Render Logs'ta 'R2 PUT FAILED' satÄ±rÄ±na bak.",
+            f"Storage hatası: {type(e).__name__}: {str(e)}",
             status_code=502,
         )
 
     cur.execute(
-        "INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
-           VALUES(?,?,?,?,?,?,?)",
+        "INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at) VALUES(?,?,?,?,?,?,?)",
         (capsule_id, "video", key, original, file.content_type, len(data), now_utc_iso()),
     )
     con.commit()
@@ -604,7 +618,7 @@ def open_media(request: Request, media_id: int):
     con.close()
 
     if not m:
-        return HTMLResponse("BulunamadÄ±.", status_code=404)
+        return HTMLResponse("Bulunamadı.", status_code=404)
 
     url = r2_presigned_get(m["r2_key"], expires_sec=600)
     return RedirectResponse(url=url, status_code=302)

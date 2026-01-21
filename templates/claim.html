@@ -1,193 +1,75 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kapsül Sahiplen</title>
-  <style>
-    :root{
-      --bg:#070A12; --bg2:#04050B;
-      --ink:#E9ECFF; --muted:#A7AFD6;
-      --line:rgba(233,236,255,.14);
-      --accent:#9B7CFF; --accent2:#20E3B2; --warn:#FF3D81;
-      --radius:18px;
-      --shadow: 0 22px 70px rgba(0,0,0,.55);
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; color:var(--ink);
-      background:
-        radial-gradient(1100px 700px at 20% 10%, rgba(155,124,255,.18), transparent 60%),
-        radial-gradient(900px 650px at 85% 30%, rgba(32,227,178,.10), transparent 60%),
-        linear-gradient(180deg,var(--bg),var(--bg2));
-      font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      min-height:100vh;
-      display:grid;
-      place-items:center;
-      padding: 26px 18px;
-    }
-    .frame{
-      width:min(920px, 100%);
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      background: linear-gradient(180deg, rgba(233,236,255,.06), rgba(233,236,255,.03));
-      box-shadow: var(--shadow);
-      overflow:hidden;
-      position:relative;
-    }
-    .frame::before{
-      content:"";
-      position:absolute; inset:0;
-      background:
-        radial-gradient(circle at 15% 22%, rgba(155,124,255,.45) 0 2px, transparent 3px),
-        radial-gradient(circle at 38% 52%, rgba(233,236,255,.30) 0 1.5px, transparent 3px),
-        radial-gradient(circle at 70% 35%, rgba(32,227,178,.30) 0 2px, transparent 3px),
-        linear-gradient(120deg, transparent 0 35%, rgba(233,236,255,.08) 35% 36%, transparent 36% 100%);
-      opacity:.55;
-      pointer-events:none;
-    }
-    .inner{ position:relative; padding: 22px; display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
-    @media (max-width: 860px){ .inner{ grid-template-columns: 1fr; } }
-
-    .card{
-      border:1px solid var(--line);
-      border-radius:16px;
-      background: rgba(4,6,14,.55);
-      backdrop-filter: blur(10px);
-      padding: 18px;
-    }
-    .kicker{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-      font-size: 12px;
-      letter-spacing:.6px;
-      text-transform: uppercase;
-      color: rgba(233,236,255,.78);
-      display:flex; align-items:center; gap:10px;
-    }
-    .dot{ width:7px;height:7px;border-radius:50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      box-shadow: 0 0 18px rgba(155,124,255,.35);
-    }
-    h2{ margin: 10px 0 6px; font-size: 18px; font-weight: 700; }
-    p{ margin:0; color: var(--muted); }
-
-    .err{
-      margin: 12px 0 0;
-      border: 1px solid rgba(255,61,129,.35);
-      background: rgba(255,61,129,.12);
-      color: rgba(255,230,240,.92);
-      padding: 10px 12px;
-      border-radius: 12px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-      font-size: 12px;
-    }
-
-    label{
-      display:block;
-      margin-top:12px;
-      color: rgba(233,236,255,.80);
-      font-size: 12px;
-      letter-spacing:.4px;
-      text-transform: uppercase;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-    }
-    input{
-      width:100%;
-      margin-top:6px;
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(233,236,255,.16);
-      background: rgba(7,10,18,.55);
-      color: var(--ink);
-      outline:none;
-    }
-    input:focus{
-      border-color: rgba(155,124,255,.55);
-      box-shadow: 0 0 0 4px rgba(155,124,255,.12);
-    }
-    .btn{
-      margin-top: 14px;
-      width:100%;
-      display:flex; justify-content:center; align-items:center; gap:10px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(233,236,255,.18);
-      background: linear-gradient(135deg, rgba(155,124,255,.30), rgba(32,227,178,.18));
-      color: var(--ink);
-      font-weight: 720;
-      cursor:pointer;
-      transition: transform .15s ease, filter .15s ease;
-    }
-    .btn:hover{ transform: translateY(-1px); filter: brightness(1.08); }
-    .btn:active{ transform: translateY(0px); filter: brightness(.98); }
-
-    .hint{
-      margin-top: 12px;
-      color: rgba(233,236,255,.70);
-      font-size: 12px;
-    }
-    .hint b{ color: rgba(233,236,255,.92); }
-
-    .aside{
-      display:flex; flex-direction:column; gap:12px;
-    }
-    .chip{
-      border:1px solid var(--line);
-      background: rgba(4,6,14,.45);
-      border-radius: 14px;
-      padding: 12px 12px;
-      color: rgba(233,236,255,.78);
-      font-size: 12px;
-    }
-    .chip .t{ color: rgba(233,236,255,.92); font-weight: 700; display:block; margin-bottom:4px; }
-    .chip code{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kapsülü Aç - NexusMemoir</title>
+    <link rel="stylesheet" href="/static/css/app.css">
 </head>
-
 <body>
-  <div class="frame">
-    <div class="inner">
-      <div class="card">
-        <div class="kicker"><span class="dot"></span> KAPSÜL SAHİPLENME</div>
-        <h2>Eşleşme doğrulaması</h2>
-        <p>Token (QR) + PIN (kutunun içi) birleşince kapsül sana bağlanır.</p>
+    <canvas id="neuralBg"></canvas>
+    
+    <div class="claim-container">
+        <div class="claim-card">
+            <div class="logo-section">
+                <div class="logo-icon">🧠</div>
+                <h1 class="logo-text">NexusMemoir</h1>
+                <p class="logo-subtitle">Zamanı kilitle. Zihnini sakla.</p>
+            </div>
 
-        {% if error %}
-          <div class="err">⟟ {{ error }}</div>
-        {% endif %}
+            <div class="claim-content">
+                <h2>Kapsülünü Aç</h2>
+                <p class="claim-description">QR kodundan gelen token ve PIN ile kapsülüne erişebilirsin</p>
 
-        <form method="post" action="/claim" autocomplete="off">
-          <label>Token</label>
-          <input name="token" value="{{ token }}" required>
+                {% if error %}
+                <div class="error-message">
+                    <span class="error-icon">⚠️</span>
+                    <span>{{ error }}</span>
+                </div>
+                {% endif %}
 
-          <label>PIN</label>
-          <input name="pin" inputmode="numeric" placeholder="6 hane" required>
+                <form method="POST" action="/claim" class="claim-form">
+                    <div class="form-group">
+                        <label for="token">Token</label>
+                        <input 
+                            type="text" 
+                            id="token" 
+                            name="token" 
+                            value="{{ token }}"
+                            placeholder="QR kodundan gelen token"
+                            required
+                            {% if token %}readonly{% endif %}
+                        >
+                    </div>
 
-          <button class="btn" type="submit">
-            <span>⟡</span><span>Devam Et</span><span style="opacity:.75;">→</span>
-          </button>
-        </form>
+                    <div class="form-group">
+                        <label for="pin">PIN (6 haneli)</label>
+                        <input 
+                            type="text" 
+                            id="pin" 
+                            name="pin" 
+                            placeholder="000000"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            required
+                            autofocus
+                        >
+                        <small>Kapsül oluştururken aldığın 6 haneli PIN</small>
+                    </div>
 
-        <div class="hint">
-          İpucu: PIN’i kopyalarken başına/sonuna boşluk gelmesin. <b>Her kapsülün PIN’i farklıdır.</b>
+                    <button type="submit" class="btn-primary btn-full">
+                        <span>Kapsülü Aç</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                </form>
+
+                <div class="claim-footer">
+                    <p>Kapsülün yok mu? <a href="/">Ana sayfaya dön</a></p>
+                </div>
+            </div>
         </div>
-      </div>
-
-      <div class="aside">
-        <div class="chip">
-          <span class="t">Gizlilik</span>
-          Token linki tek başına yetmez. PIN olmadan içerik görünmez.
-        </div>
-        <div class="chip">
-          <span class="t">Zaman Kilidi</span>
-          İçerikler, seçtiğin tarihe kadar “zihnin derinlerinde” saklanır.
-        </div>
-        <div class="chip">
-          <span class="t">Test Notu</span>
-          Local MVP’de her şey bilgisayarında. Yayına alınca depolama “private” olacak.
-        </div>
-      </div>
     </div>
-  </div>
+
+    <script src="/static/js/neural-bg.js"></script>
 </body>
 </html>

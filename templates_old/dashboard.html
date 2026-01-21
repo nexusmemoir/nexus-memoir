@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NexusMemoir • Dashboard</title>
+  <style>
+    :root{
+      --bg0:#05070c;
+      --bg1:#070a12;
+      --card:rgba(255,255,255,.06);
+      --card2:rgba(255,255,255,.04);
+      --stroke:rgba(255,255,255,.10);
+      --stroke2:rgba(255,255,255,.16);
+      --txt:#e9efff;
+      --muted:rgba(233,239,255,.68);
+      --muted2:rgba(233,239,255,.52);
+      --good:#3ee6a8;
+      --bad:#ff4d6d;
+      --warn:#ffcd57;
+      --accent:#9a7bff;
+      --accent2:#38bdf8;
+      --shadow: 0 30px 90px rgba(0,0,0,.55);
+      --r:22px;
+      --r2:18px;
+      --pad:22px;
+      --pad2:16px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--font);
+      color:var(--txt);
+      background:
+        radial-gradient(1200px 900px at 18% 10%, rgba(154,123,255,.18), transparent 60%),
+        radial-gradient(1200px 900px at 78% 10%, rgba(56,189,248,.12), transparent 62%),
+        radial-gradient(900px 700px at 70% 75%, rgba(62,230,168,.10), transparent 58%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    /* subtle grid */
+    body:before{
+      content:"";
+      position:fixed; inset:0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size:64px 64px;
+      opacity:.35;
+      pointer-events:none;
+      mask-image: radial-gradient(900px 700px at 30% 20%, black 0, transparent 70%);
+    }
+
+    a{color:inherit}
+    .wrap{
+      width:min(1200px, 92vw);
+      margin:34px auto 56px;
+    }
+
+    /* Top bar */
+    .top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:18px;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex; gap:14px; align-items:center;
+    }
+    .logo{
+      width:44px; height:44px; border-radius:16px;
+      background:
+        radial-gradient(20px 20px at 30% 30%, rgba(255,255,255,.55), rgba(255,255,255,.12) 55%, rgba(255,255,255,.06)),
+        linear-gradient(135deg, rgba(154,123,255,.85), rgba(56,189,248,.75));
+      box-shadow: 0 18px 60px rgba(154,123,255,.22);
+      border:1px solid rgba(255,255,255,.14);
+    }
+    .brand h1{
+      font-size:22px;
+      letter-spacing:.2px;
+      margin:0;
+      line-height:1.1;
+    }
+    .brand p{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .actions{
+      display:flex; gap:10px; align-items:center;
+      margin-top:2px;
+    }
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color:var(--txt);
+      text-decoration:none;
+      font-size:13px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 30px rgba(0,0,0,.25);
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.06); }
+    .btn .dot{
+      width:8px;height:8px;border-radius:99px;
+      background: var(--accent2);
+      box-shadow: 0 0 0 4px rgba(56,189,248,.18);
+    }
+    .btn.danger .dot{ background: var(--bad); box-shadow: 0 0 0 4px rgba(255,77,109,.18); }
+
+    /* Layout */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:18px;
+      margin-top:18px;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      .actions{ justify-content:flex-end; }
+    }
+
+    .panel{
+      border-radius: var(--r);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+      position:relative;
+      overflow:hidden;
+    }
+    .panel:after{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(500px 240px at 10% 0%, rgba(154,123,255,.18), transparent 60%),
+        radial-gradient(420px 220px at 95% 5%, rgba(56,189,248,.12), transparent 58%);
+      pointer-events:none;
+      opacity:.85;
+      mask-image: linear-gradient(180deg, black, transparent 72%);
+    }
+
+    .panel .inner{
+      position:relative;
+      padding: var(--pad);
+    }
+
+    .kpiRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:14px;
+    }
+    .kpiLeft{
+      display:flex; flex-direction:column; gap:6px;
+      min-width: 220px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 12px;
+      border-radius: 999px;
+      width:max-content;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      font-size:12px;
+      color: var(--muted);
+    }
+    .pill b{ color: var(--txt); font-weight:650; }
+    .state{
+      display:inline-flex; align-items:center; gap:10px;
+      font-size:13px;
+      color: var(--muted);
+    }
+    .state .led{
+      width:10px;height:10px;border-radius:99px;
+      background: var(--bad);
+      box-shadow: 0 0 0 6px rgba(255,77,109,.12);
+    }
+    .state.open .led{
+      background: var(--good);
+      box-shadow: 0 0 0 6px rgba(62,230,168,.12);
+    }
+    .state span{
+      display:inline-flex; gap:8px; align-items:center;
+    }
+
+    .miniCards{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+      margin: 12px 0 18px;
+    }
+    @media (max-width: 520px){
+      .miniCards{ grid-template-columns: 1fr; }
+    }
+    .mini{
+      padding:14px 14px;
+      border-radius: var(--r2);
+      background: rgba(0,0,0,.20);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .mini .t{ color: var(--muted); font-size:12px; display:flex; justify-content:space-between; }
+    .mini .v{ margin-top:10px; font-size:20px; letter-spacing:.3px; }
+    .mini .bar{
+      margin-top:10px;
+      height:6px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      overflow:hidden;
+    }
+    .mini .bar > i{
+      display:block;
+      height:100%;
+      width: var(--p, 0%);
+      background: linear-gradient(90deg, rgba(154,123,255,.9), rgba(56,189,248,.85));
+      border-radius:999px;
+      box-shadow: 0 10px 30px rgba(154,123,255,.16);
+    }
+
+    hr.sep{
+      border:none;
+      height:1px;
+      background: rgba(255,255,255,.10);
+      margin: 18px 0;
+    }
+
+    .sectionTitle{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+      margin: 2px 0 12px;
+    }
+    .sectionTitle h2{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.25px;
+      color: var(--txt);
+      font-weight:650;
+      display:flex; align-items:center; gap:10px;
+    }
+    .sectionTitle small{
+      color: var(--muted2);
+      font-size:12px;
+    }
+
+    /* Forms */
+    form{margin:0}
+    label{
+      display:block;
+      font-size:12px;
+      color: var(--muted);
+      margin-bottom:8px;
+      letter-spacing:.2px;
+    }
+    input[type="text"], input[type="datetime-local"], textarea{
+      width:100%;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.24);
+      color: var(--txt);
+      padding: 12px 14px;
+      outline:none;
+      transition: border-color .15s ease, background .15s ease;
+      font-size:13px;
+    }
+    textarea{ min-height: 120px; resize: vertical; }
+    input:focus, textarea:focus{ border-color: rgba(154,123,255,.55); background: rgba(0,0,0,.28); }
+
+    .row{
+      display:flex; gap:10px; align-items:flex-end;
+    }
+    .row > div{ flex:1; }
+    @media (max-width: 520px){
+      .row{ flex-direction:column; align-items:stretch; }
+    }
+    .btnSolid{
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.14);
+      padding: 11px 14px;
+      font-size:13px;
+      color: var(--txt);
+      background: linear-gradient(135deg, rgba(154,123,255,.38), rgba(56,189,248,.22));
+      cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, filter .12s ease;
+      user-select:none;
+      backdrop-filter: blur(12px);
+    }
+    .btnSolid:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.22); filter: brightness(1.05); }
+    .btnSolid:disabled{
+      opacity:.55; cursor:not-allowed; transform:none;
+    }
+
+    .hint{
+      margin-top:8px;
+      color: var(--muted2);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    /* Right panel list */
+    .list{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .empty{
+      padding:16px;
+      border-radius: var(--r2);
+      background: rgba(0,0,0,.18);
+      border:1px dashed rgba(255,255,255,.14);
+      color: var(--muted);
+      font-size:13px;
+    }
+
+    .note{
+      padding:14px 14px;
+      border-radius: var(--r2);
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      position:relative;
+      overflow:hidden;
+    }
+    .note:before{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(260px 120px at 0% 0%, rgba(154,123,255,.16), transparent 60%);
+      pointer-events:none;
+      opacity:.85;
+    }
+    .note .text{
+      position:relative;
+      white-space:pre-wrap;
+      line-height:1.55;
+      font-size:13px;
+      color: rgba(233,239,255,.88);
+    }
+
+    .mediaGrid{
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap:10px;
+    }
+    @media (max-width: 520px){
+      .mediaGrid{ grid-template-columns: 1fr; }
+    }
+    .mcard{
+      border-radius: var(--r2);
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.22);
+      padding: 12px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .mcard .meta{
+      display:flex; flex-direction:column; gap:4px;
+      min-width: 0;
+    }
+    .mcard .meta b{
+      font-size:13px;
+      font-weight:650;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 230px;
+    }
+    .mcard .meta small{
+      color: var(--muted2);
+      font-size:12px;
+    }
+    .mcard a.open{
+      text-decoration:none;
+      padding:10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      font-size:12px;
+      white-space:nowrap;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .mcard a.open:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.20);
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: var(--muted);
+      font-size:12px;
+      margin-left:10px;
+    }
+    .tag i{
+      width:8px; height:8px; border-radius:999px;
+      background: rgba(255,255,255,.18);
+    }
+    .tag.good i{ background: var(--good); box-shadow:0 0 0 4px rgba(62,230,168,.10); }
+    .tag.bad i{ background: var(--bad); box-shadow:0 0 0 4px rgba(255,77,109,.10); }
+
+    .footerNote{
+      margin-top: 12px;
+      color: var(--muted2);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>NexusMemoir</h1>
+          <p>Zamanı kilitle. Zihnini sakla. Gelecekte tek seferde aç.</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a class="btn danger" href="/logout"><span class="dot"></span> Çıkış</a>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <!-- LEFT: Control / Upload panel -->
+      <section class="panel">
+        <div class="inner">
+
+          <div class="kpiRow">
+            <div class="kpiLeft">
+              <div class="pill">
+                <span style="opacity:.9">Kapsül ID</span>
+                <b>#{{ capsule["id"] }}</b>
+              </div>
+
+              {% if open %}
+                <div class="state open">
+                  <span><span class="led"></span> Durum: <b style="color:var(--good)">AÇIK</b></span>
+                </div>
+              {% else %}
+                <div class="state">
+                  <span><span class="led"></span> Durum: <b style="color:var(--bad)">KİLİTLİ</b></span>
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="pill" style="justify-content:flex-end">
+              <span style="opacity:.9">unlock_at</span>
+              <b>
+                {% if capsule["unlock_at"] %}
+                  {{ capsule["unlock_at"] }}
+                {% else %}
+                  henüz yok
+                {% endif %}
+              </b>
+            </div>
+          </div>
+
+          <!-- Counters -->
+          <div class="miniCards">
+            <div class="mini">
+              <div class="t"><span>metin</span><span>{{ notes_c }}/{{ MAX_NOTES }}</span></div>
+              <div class="v">{{ notes_c }}</div>
+              <div class="bar"><i style="--p: {{ (notes_c / MAX_NOTES * 100) | round(0) }}%"></i></div>
+            </div>
+            <div class="mini">
+              <div class="t"><span>foto</span><span>{{ photos_c }}/{{ MAX_PHOTOS }}</span></div>
+              <div class="v">{{ photos_c }}</div>
+              <div class="bar"><i style="--p: {{ (photos_c / MAX_PHOTOS * 100) | round(0) }}%"></i></div>
+            </div>
+            <div class="mini">
+              <div class="t"><span>video</span><span>{{ videos_c }}/{{ MAX_VIDEOS }}</span></div>
+              <div class="v">{{ videos_c }}</div>
+              <div class="bar"><i style="--p: {{ (videos_c / MAX_VIDEOS * 100) | round(0) }}%"></i></div>
+            </div>
+          </div>
+
+          <hr class="sep"/>
+
+          <!-- LOCK TIME -->
+          <div class="sectionTitle">
+            <h2>⏳ Kilit Zamanı</h2>
+            {% if open %}
+              <span class="tag good"><i></i> açıldı</span>
+            {% else %}
+              <span class="tag bad"><i></i> kilitli</span>
+            {% endif %}
+          </div>
+
+          {% if not open %}
+            <form action="/set-unlock" method="post">
+              <div class="row">
+                <div>
+                  <label>TR saati ile tarih seç (UTC+3)</label>
+                  <input type="datetime-local" name="unlock_at" required />
+                </div>
+                <div style="flex:0 0 140px">
+                  <button class="btnSolid" type="submit">Kaydet</button>
+                </div>
+              </div>
+              <div class="hint">Test için 1-2 dakika sonrasına ayarlayabilirsin. (TR saati kabul edilir.)</div>
+            </form>
+          {% else %}
+            <div class="empty">Kilit açıldı. Zaman ayarı artık değiştirilemez.</div>
+          {% endif %}
+
+          <hr class="sep"/>
+
+          <!-- ADD NOTE -->
+          <div class="sectionTitle">
+            <h2>📝 Anı Yaz</h2>
+            <small>maksimum {{ MAX_NOTES }} metin</small>
+          </div>
+
+          {% if not open %}
+            <form action="/add-note" method="post">
+              <label>Bugünün zihninden geleceğe bir not…</label>
+              <textarea name="text" placeholder="Bugünün zihninden geleceğe bir not…" maxlength="2000"></textarea>
+              <div class="row" style="margin-top:10px">
+                <div class="hint">İpucu: kısa, net, “tek okumada vurucu” notlar daha iyi.</div>
+                <div style="flex:0 0 160px">
+                  <button class="btnSolid" type="submit" {% if notes_c >= MAX_NOTES %}disabled{% endif %}>Metni Kaydet</button>
+                </div>
+              </div>
+            </form>
+          {% else %}
+            <div class="empty">Kapsül açıldı. Metin ekleme kapalı.</div>
+          {% endif %}
+
+          <hr class="sep"/>
+
+          <!-- UPLOAD PHOTO -->
+          <div class="sectionTitle">
+            <h2>🖼️ Foto Yükle</h2>
+            <small>jpg / png / webp • max 10MB</small>
+          </div>
+
+          {% if not open %}
+           <form action="/upload/photo" method="post" enctype="multipart/form-data">
+  <label>Foto seç</label>
+
+  <input 
+    type="file" 
+    name="file" 
+    accept="image/jpeg,image/png,image/webp" 
+    required
+    style="width:100%; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.24); color:var(--muted);" 
+  />
+
+  <div class="row" style="margin-top:10px">
+    <div class="hint">
+      Maksimum {{ MAX_PHOTOS }} foto. Şu an {{ photos_c }} adet.
+    </div>
+
+    <div style="flex:0 0 160px">
+      <button 
+        class="btnSolid" 
+        type="submit"
+        {% if photos_c >= MAX_PHOTOS %}disabled{% endif %}
+      >
+        Foto Yükle
+      </button>
+    </div>
+  </div>
+</form>
+
+          {% else %}
+            <div class="empty">Kapsül açıldı. Foto yükleme kapalı.</div>
+          {% endif %}
+
+          <hr class="sep"/>
+
+          <!-- UPLOAD VIDEO -->
+          <div class="sectionTitle">
+            <h2>🎞️ Video Yükle</h2>
+            <small>mp4 / webm / mov • max 80MB</small>
+          </div>
+
+          {% if not open %}
+            <form action="/upload/video" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="capsule_id" value="{{ capsule.id }}">
+  <input type="hidden" name="token" value="{{ token }}">
+
+  <label>Video seç</label>
+  <input type="file" name="file" accept="video/mp4,video/webm,video/quicktime" required
+         style="width:100%; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.24); color:var(--muted);" />
+
+  <div class="row" style="margin-top:10px">
+    <div class="hint">Maksimum {{ MAX_VIDEOS }} video. Şu an {{ videos_c }} adet.</div>
+    <div style="flex:0 0 160px">
+      <button class="btnSolid" type="submit" {% if videos_c >= MAX_VIDEOS %}disabled{% endif %}>Video Yükle</button>
+    </div>
+  </div>
+</form>
+
+          {% else %}
+            <div class="empty">Kapsül açıldı. Video yükleme kapalı.</div>
+          {% endif %}
+
+          <div class="footerNote">
+            <b>Gizlilik notu:</b> Kapsül kilitliyken içerikler sadece sisteme kaydedilir, açılınca listelenir.
+            Foto/video açma linkleri açıldıktan sonra <code>/m/{id}</code> ile presigned URL üzerinden çalışır.
+          </div>
+
+        </div>
+      </section>
+
+      <!-- RIGHT: Contents -->
+      <section class="panel">
+        <div class="inner">
+
+          <div class="sectionTitle" style="margin-top:2px">
+            <h2>🧠 Anılar</h2>
+            {% if open %}
+              <small>Kilit açıldı: içerikler görünür.</small>
+            {% else %}
+              <small>Kilit açılınca içerikler burada görünecek.</small>
+            {% endif %}
+          </div>
+
+          {% if not open %}
+            <div class="empty">
+              Kilit açılınca içerikler burada görünecek.
+              <div class="hint">İpucu: unlock zamanını soldan ayarla ve sayfayı yenile.</div>
+            </div>
+          {% else %}
+            <!-- NOTES -->
+            <div class="sectionTitle" style="margin-top:16px">
+              <h2>📝 Metinler</h2>
+              <small>{{ notes|length }} adet</small>
+            </div>
+
+            {% if notes and notes|length > 0 %}
+              <div class="list">
+                {% for n in notes %}
+                  <div class="note">
+                    <div class="text">{{ n["text"] }}</div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="empty">Henüz eklenmiş metin yok.</div>
+            {% endif %}
+
+            <hr class="sep"/>
+
+            <!-- PHOTOS -->
+            <div class="sectionTitle">
+              <h2>🖼️ Fotoğraflar</h2>
+              <small>{{ photos|length }} adet</small>
+            </div>
+
+            {% if photos and photos|length > 0 %}
+              <div class="mediaGrid">
+                {% for p in photos %}
+                  <div class="mcard">
+                    <div class="meta">
+                      <b title="{{ p['original_name'] or 'photo' }}">{{ p["original_name"] or "photo" }}</b>
+                      <small>id: {{ p["id"] }} • foto</small>
+                    </div>
+                    <a class="open" href="/m/{{ p['id'] }}" target="_blank" rel="noopener">Aç</a>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="empty">Henüz foto yok.</div>
+            {% endif %}
+
+            <hr class="sep"/>
+
+            <!-- VIDEO -->
+            <div class="sectionTitle">
+              <h2>🎞️ Video</h2>
+              <small>
+                {% if video %}1 adet{% else %}yok{% endif %}
+              </small>
+            </div>
+
+            {% if video %}
+              <div class="mcard">
+                <div class="meta">
+                  <b title="{{ video['original_name'] or 'video' }}">{{ video["original_name"] or "video" }}</b>
+                  <small>id: {{ video["id"] }} • video</small>
+                </div>
+                <a class="open" href="/m/{{ video['id'] }}" target="_blank" rel="noopener">Aç</a>
+              </div>
+            {% else %}
+              <div class="empty">Henüz video yok.</div>
+            {% endif %}
+
+          {% endif %}
+        </div>
+      </section>
+
+    </div>
+  </div>
+</body>
+</html>
