@@ -159,46 +159,27 @@ def init_db():
     # Yeni şema (r2_key var)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS media (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        capsule_id INTEGER NOT NULL,
-        kind TEXT NOT NULL,           -- 'photo' | 'video'
-        r2_key TEXT NOT NULL,
-        original_name TEXT,
-        content_type TEXT,
-        size_bytes INTEGER,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(capsule_id) REFERENCES capsules(id)
-    )
-    """)
+         # ---- SAFE migration (never crash app on old DBs) ----
+    def ensure_column(table: str, col: str, ddl: str):
+        try:
+            cols = {r["name"] for r in cur.execute(f"PRAGMA table_info({table})").fetchall()}
+            if col in cols:
+                return
+            cur.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+        except sqlite3.OperationalError as e:
+            # "duplicate column name" gibi durumlarda crash etme
+            print(f"[MIGRATION] skip {table}.{col}: {e}")
 
-    # ---- lightweight migration for old DBs ----
-    # Eski DB'lerde media tablosu var ama kolonlar eksik olabilir.
-    if _table_exists(cur, "media"):
-        cols = _table_columns(cur, "media")
+    # media tablosu eskiyse kolonları ekle
+    if cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='media'").fetchone():
+        ensure_column("media", "capsule_id", "capsule_id INTEGER")
+        ensure_column("media", "kind", "kind TEXT")
+        ensure_column("media", "r2_key", "r2_key TEXT")
+        ensure_column("media", "original_name", "original_name TEXT")
+        ensure_column("media", "content_type", "content_type TEXT")
+        ensure_column("media", "size_bytes", "size_bytes INTEGER")
+        ensure_column("media", "created_at", "created_at TEXT")
 
-        # En kritik kolon: r2_key (senin hatan buydu)
-        if "r2_key" not in cols:
-            cur.execute("ALTER TABLE media ADD COLUMN r2_key TEXT")
-
-        # Diğer kolonlar (eski şemaya göre eksik olabilir)
-        cols = _table_columns(cur, "media")
-        if "kind" not in cols:
-            cur.execute("ALTER TABLE media ADD COLUMN kind TEXT")
-        cols = _table_columns(cur, "media")
-        if "original_name" not in cols:
-            cur.execute("ALTER TABLE media ADD COLUMN original_name TEXT")
-        cols = _table_columns(cur, "media")
-        if "content_type" not in cols:
-            cur.execute("ALTER TABLE media ADD COLUMN content_type TEXT")
-        cols = _table_columns(cur, "media")
-        if "size_bytes" not in cols:
-            cur.execute("ALTER TABLE media ADD COLUMN size_bytes INTEGER")
-        cols = _table_columns(cur, "media")
-        if "created_at" not in cols:
-            cur.execute("ALTER TABLE media ADD COLUMN created_at TEXT")
-        cols = _table_columns(cur, "media")
-        if "capsule_id" not in cols:
-            cur.execute("ALTER TABLE media ADD COLUMN capsule_id INTEGER")
 
     con.commit()
     con.close()
