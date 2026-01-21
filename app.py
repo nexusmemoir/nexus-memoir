@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 # app.py — NexusMemoir (clean + production-ish MVP)
 # - Session-based ownership (token URL'de kalmaz)
 # - Cloudflare R2 (S3 compatible) media storage (private bucket + presigned URL)
