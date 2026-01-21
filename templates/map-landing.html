@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusMemoir - Anılarını Dünyaya Göm</title>
+    <link rel="icon" type="image/png" href="/static/images/nexusmemoir-logo.png">
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="/static/css/map-landing.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="logo-image">
+                <span class="logo-text">NexusMemoir</span>
+            </div>
+            <div class="nav-links">
+                <a href="#map">Haritayı Gör</a>
+                <a href="#pricing">Fiyatlar</a>
+                <a href="/create" class="btn-create">Kapsülünü Göm</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-compact">
+        <div class="hero-content-compact">
+            <div class="hero-badge">
+                <span class="badge-icon">🎈</span>
+                <span>Canlı Dijital Zaman Kapsülleri</span>
+            </div>
+            <h1 class="hero-title-compact">
+                Anılarını<br>
+                <span class="gradient-text">Dünyaya Göm</span>
+            </h1>
+            <p class="hero-subtitle-compact">
+                2D dünya haritasında özel bir yer seç. Anılarını göm, zaman gelince otomatik açılsın.
+                <strong>Herkes görsün, sadece sen açabilsin.</strong>
+            </p>
+            <div class="hero-stats-compact">
+                <div class="stat-compact">
+                    <span class="stat-number-compact" id="totalCapsules">156</span>
+                    <span class="stat-label-compact">Gömülü Kapsül</span>
+                </div>
+                <div class="stat-compact">
+                    <span class="stat-number-compact" id="countries">34</span>
+                    <span class="stat-label-compact">Ülke</span>
+                </div>
+                <div class="stat-compact">
+                    <span class="stat-number-compact pulse-live">●</span>
+                    <span class="stat-label-compact">Canlı Harita</span>
+                </div>
+            </div>
+            <a href="/create" class="btn-primary-hero">
+                <span>Kapsülünü Oluştur</span>
+                <span class="btn-arrow">→</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- Interactive Map Section -->
+    <section id="map" class="map-section">
+        <div class="map-header">
+            <h2>🌍 Canlı Kapsül Haritası</h2>
+            <p>Dünya çapında gömülmüş anıları keşfet • Real-time güncellemeler</p>
+        </div>
+        
+        <div id="mainMap" class="main-map"></div>
+        
+        <div class="map-legend">
+            <div class="legend-title">Zone Fiyatları</div>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff6b9d;"></div>
+                    <span>Premium - ₺1.500</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ffa94d;"></div>
+                    <span>Popular - ₺999</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ffd93d;"></div>
+                    <span>Standard - ₺699</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #95e1d3;"></div>
+                    <span>Basic - ₺499</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works-simple">
+        <h2>Nasıl Çalışır?</h2>
+        <div class="steps-simple">
+            <div class="step-simple">
+                <div class="step-emoji">📍</div>
+                <h3>Yer Seç</h3>
+                <p>Haritada özel bir lokasyon seç</p>
+            </div>
+            <div class="step-simple">
+                <div class="step-emoji">✏️</div>
+                <h3>İçerik Ekle</h3>
+                <p>Fotoğraf, video, mesajlarını yükle</p>
+            </div>
+            <div class="step-simple">
+                <div class="step-emoji">⏰</div>
+                <h3>Tarih Belirle</h3>
+                <p>Ne zaman açılacağını ayarla</p>
+            </div>
+            <div class="step-simple">
+                <div class="step-emoji">🎈</div>
+                <h3>Göm & Paylaş</h3>
+                <p>Kapsülün haritada görünsün!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="pricing-simple">
+        <h2>Basit Fiyatlandırma</h2>
+        <p class="pricing-subtitle">Lokasyona göre dinamik fiyat</p>
+        <div class="pricing-grid">
+            <div class="price-card" style="border-color: #ff6b9d;">
+                <div class="price-zone">🔴 Premium</div>
+                <div class="price-amount">₺1.500</div>
+                <div class="price-cities">Istanbul, Paris, Tokyo, New York...</div>
+            </div>
+            <div class="price-card" style="border-color: #ffa94d;">
+                <div class="price-zone">🟠 Popular</div>
+                <div class="price-amount">₺999</div>
+                <div class="price-cities">Izmir, Berlin, Dubai, Seoul...</div>
+            </div>
+            <div class="price-card" style="border-color: #ffd93d;">
+                <div class="price-zone">🟡 Standard</div>
+                <div class="price-amount">₺699</div>
+                <div class="price-cities">Ankara, Vienna, Athens...</div>
+            </div>
+            <div class="price-card" style="border-color: #95e1d3;">
+                <div class="price-zone">🟢 Basic</div>
+                <div class="price-amount">₺499</div>
+                <div class="price-cities">Diğer tüm yerler</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-simple">
+        <h2>Hazır mısın?</h2>
+        <p>İlk kapsülünü oluştur, dünyayla paylaş</p>
+        <a href="/create" class="btn-primary-large">
+            <span>Hemen Başla</span>
+            <span class="btn-arrow">→</span>
+        </a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer-simple">
+        <div class="footer-content-simple">
+            <div class="footer-brand-simple">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="footer-logo">
+                <p>Anılarını dünyaya göm.</p>
+            </div>
+            <div class="footer-links-simple">
+                <a href="#map">Harita</a>
+                <a href="#pricing">Fiyatlar</a>
+                <a href="/create">Kapsül Oluştur</a>
+            </div>
+        </div>
+        <div class="footer-bottom-simple">
+            <p>&copy; 2026 NexusMemoir • Dijital zaman kapsülleri</p>
+        </div>
+    </footer>
+
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <script src="/static/js/map-landing.js"></script>
+</body>
+</html>

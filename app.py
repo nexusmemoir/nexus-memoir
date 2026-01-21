@@ -197,7 +197,7 @@ def count_videos(cur, capsule_id: int) -> int:
 
 @app.get("/", response_class=HTMLResponse)
 def landing_page(request: Request):
-    return templates.TemplateResponse("globe-landing.html", {"request": request})
+    return templates.TemplateResponse("map-landing.html", {"request": request})
 
 
 @app.get("/map", response_class=HTMLResponse)
