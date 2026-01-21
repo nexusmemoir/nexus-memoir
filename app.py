@@ -82,7 +82,6 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 # DB helpers
 # -------------------------
 def db():
-    # check_same_thread=False: FastAPI async ortamda daha stabil olabilir
     con = sqlite3.connect(DB_PATH, check_same_thread=False)
     con.row_factory = sqlite3.Row
     return con
@@ -122,10 +121,20 @@ def safe_filename(name: str) -> str:
     return name[:120]
 
 
+def get_table_columns(cur, table: str) -> set[str]:
+    """Get all column names from a table"""
+    try:
+        rows = cur.execute(f"PRAGMA table_info({table})").fetchall()
+        return {r["name"] for r in rows}
+    except:
+        return set()
+
+
 def init_db():
     con = db()
     cur = con.cursor()
 
+    # Create capsules table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS capsules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,6 +144,7 @@ def init_db():
     )
     """)
 
+    # Create notes table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,22 +155,50 @@ def init_db():
     )
     """)
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS media (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        capsule_id INTEGER NOT NULL,
-        kind TEXT NOT NULL,
-        r2_key TEXT NOT NULL,
-        original_name TEXT,
-        content_type TEXT,
-        size_bytes INTEGER,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(capsule_id) REFERENCES capsules(id)
-    )
-    """)
+    # Create or migrate media table
+    existing_cols = get_table_columns(cur, "media")
+    
+    if not existing_cols:
+        # Table doesn't exist - create new one
+        print("[DB] Creating media table with new schema...")
+        cur.execute("""
+        CREATE TABLE media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            capsule_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            r2_key TEXT NOT NULL,
+            original_name TEXT,
+            content_type TEXT,
+            size_bytes INTEGER,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+        )
+        """)
+    else:
+        # Table exists - check if migration needed
+        required_cols = {'id', 'capsule_id', 'kind', 'r2_key', 'original_name', 'content_type', 'size_bytes', 'created_at'}
+        missing_cols = required_cols - existing_cols
+        
+        if missing_cols:
+            print(f"[DB] Migrating media table - adding columns: {missing_cols}")
+            
+            # Add missing columns one by one
+            if 'r2_key' in missing_cols:
+                cur.execute("ALTER TABLE media ADD COLUMN r2_key TEXT")
+            if 'original_name' in missing_cols:
+                cur.execute("ALTER TABLE media ADD COLUMN original_name TEXT")
+            if 'content_type' in missing_cols:
+                cur.execute("ALTER TABLE media ADD COLUMN content_type TEXT")
+            if 'size_bytes' in missing_cols:
+                cur.execute("ALTER TABLE media ADD COLUMN size_bytes INTEGER")
+            if 'created_at' in missing_cols:
+                cur.execute("ALTER TABLE media ADD COLUMN created_at TEXT")
+            
+            print("[DB] Migration completed!")
 
     con.commit()
     con.close()
+    print("[DB] Database initialized successfully!")
 
 
 @app.on_event("startup")
@@ -478,10 +516,10 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
 
     try:
         r2_put_bytes(key=key, data=data, content_type=file.content_type)
-    except Exception:
+    except Exception as e:
         con.close()
         return HTMLResponse(
-            "Storage hatası: R2 upload başarısız. Konsolda/Render Logs'ta 'R2 PUT FAILED' satırına bak.",
+            f"Storage hatası: {type(e).__name__}: {str(e)}",
             status_code=502,
         )
 
@@ -536,10 +574,10 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
 
     try:
         r2_put_bytes(key=key, data=data, content_type=file.content_type)
-    except Exception:
+    except Exception as e:
         con.close()
         return HTMLResponse(
-            "Storage hatası: R2 upload başarısız. Konsolda/Render Logs'ta 'R2 PUT FAILED' satırına bak.",
+            f"Storage hatası: {type(e).__name__}: {str(e)}",
             status_code=502,
         )
 
