@@ -206,6 +206,12 @@ def map_page(request: Request):
     return templates.TemplateResponse("map-explorer.html", {"request": request})
 
 
+@app.get("/create", response_class=HTMLResponse)
+def create_capsule_page(request: Request):
+    """Multi-step wizard for creating a capsule"""
+    return templates.TemplateResponse("create-capsule.html", {"request": request})
+
+
 @app.get("/api/capsules/public")
 def get_public_capsules(request: Request):
     """API endpoint for fetching all public capsules for the map"""
