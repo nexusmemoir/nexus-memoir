@@ -98,20 +98,32 @@ def init_db():
     con = db()
     cur = con.cursor()
     
-    # Capsules table with new columns
+    # Capsules table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS capsules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         token_hash TEXT NOT NULL UNIQUE,
         pin_hash TEXT NOT NULL,
-        unlock_at TEXT,
-        lat REAL,
-        lng REAL,
-        location_name TEXT,
-        capsule_title TEXT,
-        is_public INTEGER DEFAULT 1
+        unlock_at TEXT
     )
     """)
+    
+    # Add missing columns (safe migration)
+    def add_column_if_missing(table, column, definition):
+        try:
+            cols = {r["name"] for r in cur.execute(f"PRAGMA table_info({table})").fetchall()}
+            if column not in cols:
+                cur.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
+                print(f"[MIGRATION] Added {table}.{column}")
+        except Exception as e:
+            print(f"[MIGRATION] Skip {table}.{column}: {e}")
+    
+    # Add new columns to capsules
+    add_column_if_missing("capsules", "lat", "lat REAL")
+    add_column_if_missing("capsules", "lng", "lng REAL")
+    add_column_if_missing("capsules", "location_name", "location_name TEXT")
+    add_column_if_missing("capsules", "capsule_title", "capsule_title TEXT")
+    add_column_if_missing("capsules", "is_public", "is_public INTEGER DEFAULT 1")
     
     cur.execute("""
     CREATE TABLE IF NOT EXISTS notes (
