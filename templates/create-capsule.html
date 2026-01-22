@@ -15,10 +15,10 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo">
+            <a href="/" class="logo" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.75rem;">
                 <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="logo-icon" style="width: 32px; height: 32px;">
                 <span class="logo-text">NexusMemoir</span>
-            </div>
+            </a>
             <div class="nav-actions">
                 <a href="/" class="btn-logout">Ana Sayfa</a>
             </div>
@@ -56,17 +56,17 @@
         <div class="wizard-step active" id="step1">
             <h2>📍 Kapsülünü Nereye Gömmek İstersin?</h2>
             <p style="color: var(--text-secondary); margin-bottom: 2rem;">
-                Haritada bir noktaya tıkla, kazma animasyonu ile kapsülünü göm!
+                Şehir/ilçe ara veya haritada bir yere <strong>çift tıkla!</strong> Kazma animasyonu ile kapsülünü göm.
             </p>
             
             <div class="map-wrapper">
-                <!-- Zone Info Card -->
+                <!-- Price Info Card -->
                 <div class="zone-info-card">
                     <div class="zone-label">Fiyat</div>
-                    <div class="zone-name" id="currentZoneName">Türkiye</div>
+                    <div class="zone-name" id="currentZoneName">Dünya Geneli</div>
                     <div class="zone-price" id="currentZonePrice">₺499</div>
                     <div style="padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; color: var(--text-secondary);">
-                        Tüm iller için tek fiyat
+                        Dünyanın her yerinde tek fiyat
                     </div>
                 </div>
 

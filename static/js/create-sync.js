@@ -1,9 +1,9 @@
-// Create Page - Turkey Focused + Shovel Animation
+// Create Page - World Map + Double Click + Shovel Animation
 
 // Mapbox token
 mapboxgl.accessToken = 'pk.eyJ1IjoibmV4dXNtZW1vaXIiLCJhIjoiY21rb2sycXN4MDhnMTNjc2FxYWtxaXY1byJ9.PEZQ7jJ02OJZ0ndCVEcc8g';
 
-// Single price for all Turkey
+// Single price
 const PRICE = 499;
 
 let selectedLat = null;
@@ -11,7 +11,7 @@ let selectedLng = null;
 let selectedLocationName = '';
 let userMarker = null;
 
-// Initialize map (Turkey focused, same as landing)
+// Initialize map (world view, same as landing)
 const map = new mapboxgl.Map({
     container: 'createMap',
     style: {
@@ -41,11 +41,10 @@ const map = new mapboxgl.Map({
             }
         ]
     },
-    center: [35.2433, 38.9637], // Turkey center
-    zoom: 6,
-    minZoom: 5.5,
-    maxZoom: 18,
-    maxBounds: [[25, 35], [45, 43]] // Turkey bounds
+    center: [20, 30],
+    zoom: 2.5,
+    minZoom: 2,
+    maxZoom: 18
 });
 
 // Add controls
@@ -53,7 +52,7 @@ map.addControl(new mapboxgl.NavigationControl());
 
 // Update info display
 function updateLocationInfo() {
-    document.getElementById('currentZoneName').textContent = 'Türkiye';
+    document.getElementById('currentZoneName').textContent = 'Dünya';
     document.getElementById('currentZonePrice').textContent = `₺${PRICE}`;
 }
 
@@ -70,21 +69,20 @@ function createUserDotMarker() {
     return el;
 }
 
-// Shovel + dirt animation (3 seconds)
+// Shovel animation (3 seconds)
 function playShovelAnimation() {
     const overlay = document.getElementById('digAnimation');
     overlay.style.display = 'flex';
     
-    // Auto-hide after 3 seconds
     setTimeout(() => {
         overlay.style.display = 'none';
     }, 3000);
 }
 
-// Map click handler
-map.on('click', function(e) {
-    selectedLat = e.latlng.lat;
-    selectedLng = e.latlng.lng;
+// Map DOUBLE CLICK handler (not single click)
+map.on('dblclick', function(e) {
+    selectedLat = e.lngLat.lat;
+    selectedLng = e.lngLat.lng;
     
     // Play shovel animation
     playShovelAnimation();
@@ -110,9 +108,9 @@ map.on('click', function(e) {
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLat}&lon=${selectedLng}`)
             .then(res => res.json())
             .then(data => {
-                const city = data.address.city || data.address.town || data.address.village || data.address.province || data.address.state;
-                const province = data.address.province || data.address.state;
-                selectedLocationName = city ? `${city}, ${province || 'Türkiye'}` : (province || 'Türkiye');
+                const city = data.address.city || data.address.town || data.address.village || data.address.county || data.address.state;
+                const country = data.address.country;
+                selectedLocationName = city ? `${city}, ${country}` : (country || 'Seçilen Lokasyon');
                 
                 document.getElementById('locationName').textContent = selectedLocationName;
                 document.getElementById('locationCoords').textContent = 
@@ -132,7 +130,7 @@ map.on('click', function(e) {
     }, 2500);
 });
 
-// Location search (Turkey cities)
+// Location search (zoom only, no auto-dig)
 const searchInput = document.getElementById('locationSearch');
 let searchTimeout;
 
@@ -143,8 +141,8 @@ searchInput.addEventListener('input', function() {
     if (query.length < 2) return;
     
     searchTimeout = setTimeout(() => {
-        // Search within Turkey
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)},Turkey&countrycodes=tr`)
+        // Search globally (city, district, country)
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1`)
             .then(res => res.json())
             .then(data => {
                 if (data.length > 0) {
@@ -152,10 +150,12 @@ searchInput.addEventListener('input', function() {
                     const lat = parseFloat(result.lat);
                     const lng = parseFloat(result.lon);
                     
-                    map.flyTo({ center: [lng, lat], zoom: 10, duration: 1500 });
-                    setTimeout(() => {
-                        map.fire('click', { latlng: { lat, lng } });
-                    }, 1600);
+                    // Just zoom, don't dig
+                    map.flyTo({ 
+                        center: [lng, lat], 
+                        zoom: 12, 
+                        duration: 1500 
+                    });
                 }
             })
             .catch(err => console.error('Search error:', err));
@@ -204,7 +204,7 @@ function nextStep(stepNumber) {
     if (stepNumber === 4) {
         document.getElementById('paymentPrice').textContent = `₺${PRICE}`;
         document.getElementById('paymentTotal').textContent = `₺${PRICE}`;
-        document.getElementById('paymentZone').textContent = 'Türkiye';
+        document.getElementById('paymentZone').textContent = 'Dünya Geneli';
         document.getElementById('paymentLocation').textContent = selectedLocationName || '-';
         document.getElementById('paymentTitle').textContent = document.getElementById('capsuleTitle').value || '-';
     }
@@ -272,7 +272,7 @@ style.textContent = `
         }
     }
     
-    /* Shovel Animation Overlay */
+    /* Shovel Animation - NOT Crane! */
     .dig-animation-overlay .shovel {
         font-size: 10rem;
         animation: digShovel 3s ease-in-out;
@@ -363,4 +363,4 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-console.log('Turkey-focused create page initialized with shovel animation!');
+console.log('World map with double-click dig and search zoom initialized!');
