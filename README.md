@@ -1,212 +1,307 @@
-# 🧠 NexusMemoir - Neural-Inspired Time Capsules
+# NexusMemoir 🌍
 
-**Zamanı Kilitle. Zihnini Sakla.**
+Dijital zaman kapsülü uygulaması. Anılarını dünyaya göm, gelecekte açılsın!
 
-Modern, sinir ağları temalı dijital zaman kapsülü uygulaması. Anılarınızı, düşüncelerinizi ve özel anlarınızı geleceğe taşıyın.
+## Özellikler ✨
 
----
+- 🗺️ **İnteraktif Harita**: 3D dünya haritasında özel lokasyon seçimi
+- 🔒 **Zamana Kilitli**: Belirlediğin tarihe kadar kimse açamaz
+- 📸 **Çoklu Format**: 5 metin, 10 fotoğraf, 1 video
+- 🌐 **Herkese Açık**: Kapsülün haritada görünür, içerik sadece senin
+- 📱 **QR Kod**: Mobil erişim için QR kod desteği
+- ☁️ **Cloudflare R2**: Güvenli ve ölçeklenebilir medya depolama
 
-## ✨ Özellikler
+## Teknolojiler 🛠️
 
-- 🔒 **Zamana Kilitli Kapsüller** - Belirlediğiniz tarihe kadar içerik tamamen kilitli
-- ⏰ **Canlı Countdown** - Şık geri sayım göstergesi
-- 🧬 **Güvenli Saklama** - Cloudflare R2 ile şifrelenmiş depolama
-- 📝 **Çoklu Format** - 5 metin, 10 fotoğraf, 1 video
-- 🎨 **Neural Network Animasyonları** - Etkileşimli arka plan efektleri
-- 📱 **QR Kod Erişim** - Her cihazdan kolay erişim
-- 🔐 **PIN Korumalı** - 6 haneli güvenlik
+- **Backend**: FastAPI (Python)
+- **Database**: SQLite
+- **Storage**: Cloudflare R2 (S3 compatible)
+- **Frontend**: Vanilla JS, Mapbox GL
+- **Hosting**: Render.com ready
 
----
+## Kurulum 🚀
 
-## 🚀 Yeni Özellikler (v2.0)
+### 1. Gereksinimler
 
-### 1. Modern Landing Page
-- Tek sayfa, gradient tasarım
-- Animated neural network background
-- Özellikler, nasıl çalışır, CTA sections
-- Responsive mobil tasarım
+- Python 3.10+
+- Cloudflare R2 hesabı
+- (Opsiyonel) Mapbox hesabı (ücretsiz)
 
-### 2. Yenilenmiş Dashboard
-- Modern glassmorphism UI
-- Canlı countdown timer
-- Progress bar'lar
-- Daha iyi upload UI
-
-### 3. Countdown Özelliği
-- Gün:Saat:Dakika:Saniye formatı
-- Gradient animasyonlar
-- Otomatik sayfa yenileme
-- TR saat dilimi desteği
-
----
-
-## 📦 Dosya Yapısı
-
-```
-nexus-memoir/
-├── app.py                      # Backend (FastAPI)
-├── requirements.txt            # Dependencies
-├── .env                        # Environment variables
-├── templates/
-│   ├── landing.html           # Ana sayfa
-│   ├── claim.html             # QR → PIN girişi
-│   └── dashboard.html         # Kapsül yönetimi + countdown
-└── static/
-    ├── css/
-    │   ├── landing.css        # Landing page styles
-    │   └── app.css            # Dashboard/claim styles
-    └── js/
-        ├── neural-bg.js       # Animated background
-        └── countdown.js       # Timer logic
-```
-
----
-
-## 🛠️ Teknolojiler
-
-- **Backend:** FastAPI (Python)
-- **Database:** SQLite
-- **Storage:** Cloudflare R2 (S3-compatible)
-- **Frontend:** HTML5, CSS3, Vanilla JS
-- **Hosting:** Render.com
-- **Animations:** Canvas API, CSS Gradients
-
----
-
-## 🌐 Deploy (Render.com)
-
-### 1. Repository Hazırlık
+### 2. Projeyi Klonla
 
 ```bash
-# Tüm dosyaları projeye kopyala
-cp -r templates/ static/ app.py /path/to/your/repo/
-
-# Git'e ekle
-git add .
-git commit -m "Add modern UI with neural theme and countdown"
-git push
+git clone <your-repo-url>
+cd nexusmemoir
 ```
 
-### 2. Render.com Ayarları
+### 3. Sanal Ortam Oluştur
 
-**Build Command:**
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# veya
+venv\Scripts\activate  # Windows
+```
+
+### 4. Bağımlılıkları Yükle
+
 ```bash
 pip install -r requirements.txt
 ```
 
-**Start Command:**
+### 5. Environment Variables
+
+`.env.example` dosyasını `.env` olarak kopyala ve doldur:
+
 ```bash
-uvicorn app:app --host 0.0.0.0 --port $PORT
+cp .env.example .env
 ```
 
-**Environment Variables:**
-```
-SECRET_KEY=your-secret-key-here
-ADMIN_PASSWORD=your-admin-password
-R2_ENDPOINT=https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
-R2_ACCESS_KEY_ID=your-r2-access-key
-R2_SECRET_ACCESS_KEY=your-r2-secret-key
-R2_BUCKET=nexusmemoir-media
-DB_PATH=/var/data/db.sqlite3  (opsiyonel, persistent disk için)
-```
+Gerekli değerler:
+- `SECRET_KEY`: Rastgele uzun bir string
+- `ADMIN_PASSWORD`: Admin erişimi için şifre
+- `R2_ENDPOINT`: Cloudflare R2 endpoint URL'i
+- `R2_ACCESS_KEY_ID`: R2 access key
+- `R2_SECRET_ACCESS_KEY`: R2 secret key
+- `R2_BUCKET`: R2 bucket adı
 
-### 3. Deploy
+### 6. Mapbox Token (Opsiyonel)
 
-Render otomatik olarak deploy edecek. Logları izleyin:
-- "Build successful" mesajını bekleyin
-- "Live" durumuna geçmesini bekleyin
+`static/js/create-sync.js` ve `static/js/map-landing.js` dosyalarındaki Mapbox token'ını kendi token'ınla değiştir:
 
----
-
-## 🎯 Kullanım
-
-### Admin - Kapsül Oluşturma
-```
-https://your-app.onrender.com/admin/create?p=YOUR_ADMIN_PASSWORD
+```javascript
+mapboxgl.accessToken = 'YOUR_MAPBOX_TOKEN_HERE';
 ```
 
-### Kullanıcı - Kapsül Açma
-1. QR kodu okutun
-2. PIN'i girin
-3. Dashboard'da:
-   - Açılma zamanını belirle
-   - Metin/foto/video ekle
-   - Countdown'u izle
-   - Zaman geldiğinde içerikleri gör
+Ücretsiz token için: https://www.mapbox.com/
+
+### 7. Uygulamayı Çalıştır
+
+```bash
+uvicorn app:app --reload --port 8000
+```
+
+Tarayıcıda aç: http://localhost:8000
+
+## Render'a Deploy 🌐
+
+### 1. Render Hesabı Oluştur
+
+https://render.com adresinden ücretsiz hesap aç
+
+### 2. Yeni Web Service Oluştur
+
+1. Dashboard → New → Web Service
+2. GitHub repo'nuzu bağlayın
+3. Build Command: `pip install -r requirements.txt`
+4. Start Command: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+
+### 3. Environment Variables Ekle
+
+Render Dashboard → Environment sekmesinden ekle:
+- `SECRET_KEY`
+- `ADMIN_PASSWORD`
+- `R2_ENDPOINT`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET`
+
+### 4. Persistent Disk Ekle
+
+Dashboard → Disks → Add Disk:
+- Name: `nexusmemoir-data`
+- Mount Path: `/var/data`
+- Size: 1GB (ücretsiz)
+
+Environment Variables'a ekle:
+```
+DB_PATH=/var/data/db.sqlite3
+```
+
+### 5. Deploy Et
+
+"Create Web Service" butonuna tıkla ve bekle!
+
+## Cloudflare R2 Kurulumu ☁️
+
+### 1. R2 Aktif Et
+
+Cloudflare Dashboard → R2 → Enable R2
+
+### 2. Bucket Oluştur
+
+Create Bucket → `nexusmemoir-media`
+
+### 3. API Token Oluştur
+
+R2 → Manage R2 API Tokens → Create API Token
+- Permissions: Object Read & Write
+- Token Name: nexusmemoir-api
+
+Token bilgilerini `.env` dosyasına ekle.
+
+## Kullanım 📖
+
+### Kapsül Oluşturma
+
+1. Ana sayfada → "Kapsülünü Oluştur"
+2. Haritada bir lokasyon seç (çift tıklama veya 3 tıklama mobilde)
+3. Başlık ve açılış tarihi belirle
+4. Ödemeyi tamamla (mock payment)
+5. QR kod ve PIN'i kaydet
+
+### Kapsüle Erişim
+
+1. QR kodu okut veya `/claim?token=XXX` linkine git
+2. PIN gir
+3. Dashboard'da içerik ekle veya görüntüle
+
+### İçerik Ekleme
+
+Dashboard'da:
+- 📝 Metin notu ekle (max 5)
+- 📸 Fotoğraf yükle (max 10, 10MB/foto)
+- 🎥 Video yükle (max 1, 80MB)
+
+### Kapsül Açılışı
+
+Belirlenen tarihte otomatik olarak açılır. Countdown timer ile geri sayım.
+
+## Proje Yapısı 📁
+
+```
+nexusmemoir/
+├── app.py                 # FastAPI backend
+├── requirements.txt       # Python bağımlılıkları
+├── render.yaml           # Render deploy config
+├── .env.example          # Environment variables template
+├── static/
+│   ├── css/             # Stil dosyaları
+│   ├── js/              # JavaScript dosyaları
+│   └── images/          # Görseller
+└── templates/           # HTML şablonları
+    ├── map-landing.html     # Ana sayfa (harita)
+    ├── globe-landing.html   # Alternatif landing (globe)
+    ├── landing.html         # Standart landing
+    ├── create-capsule.html  # Kapsül oluşturma wizard
+    ├── claim.html           # Kapsül claim sayfası
+    ├── dashboard.html       # Kapsül dashboard
+    └── success.html         # Başarı sayfası
+```
+
+## API Endpoints 🔌
+
+### Public Endpoints
+- `GET /` - Ana sayfa (map landing)
+- `GET /globe` - Globe landing
+- `GET /landing` - Standard landing
+- `GET /create` - Kapsül oluşturma sayfası
+- `GET /claim` - Kapsül claim sayfası
+- `GET /api/capsules/public` - Public kapsüller listesi
+
+### Auth Required
+- `GET /dashboard` - Kapsül dashboard
+- `POST /set-unlock` - Unlock zamanı ayarla
+- `POST /add-note` - Metin notu ekle
+- `POST /upload/photo` - Fotoğraf yükle
+- `POST /upload/video` - Video yükle
+- `GET /m/{media_id}` - Medya erişimi (presigned URL)
+
+### API Endpoints
+- `POST /api/capsules/create` - Yeni kapsül oluştur
+- `POST /claim` - Kapsül claim et
+
+## Güvenlik 🔐
+
+- Session-based authentication
+- SHA-256 token ve PIN hashing
+- R2 presigned URLs (600 saniye geçerli)
+- File type validation
+- File size limits
+- CORS koruması
+
+## Limitler ⚠️
+
+- Metin: 5 nota
+- Fotoğraf: 10 adet, 10MB/foto
+- Video: 1 adet, 80MB
+- Session timeout: Tarayıcı kapatılana kadar
+
+## Geliştirme 🔧
+
+### Yeni Feature Eklemek
+
+1. `app.py` - Backend endpoint ekle
+2. `templates/` - HTML template oluştur/güncelle
+3. `static/js/` - Frontend logic ekle
+4. Test et
+5. Deploy et
+
+### Veritabanı Şeması
+
+```sql
+-- Kapsüller
+CREATE TABLE capsules (
+    id INTEGER PRIMARY KEY,
+    token_hash TEXT UNIQUE,
+    pin_hash TEXT,
+    unlock_at TEXT,
+    title TEXT,
+    lat REAL,
+    lng REAL,
+    location_name TEXT,
+    created_at TEXT
+);
+
+-- Notlar
+CREATE TABLE notes (
+    id INTEGER PRIMARY KEY,
+    capsule_id INTEGER,
+    text TEXT,
+    created_at TEXT
+);
+
+-- Medya
+CREATE TABLE media (
+    id INTEGER PRIMARY KEY,
+    capsule_id INTEGER,
+    kind TEXT,  -- 'photo' | 'video'
+    r2_key TEXT,
+    original_name TEXT,
+    content_type TEXT,
+    size_bytes INTEGER,
+    created_at TEXT
+);
+```
+
+## Sorun Giderme 🔍
+
+### R2 Upload Başarısız
+- R2 credentials doğru mu?
+- Bucket adı doğru mu?
+- Endpoint URL doğru mu?
+
+### Harita Yüklenmiyor
+- Mapbox token geçerli mi?
+- Internet bağlantısı var mı?
+
+### Kapsül Açılmıyor
+- Tarih format kontrolü (ISO 8601)
+- Timezone ayarları (Europe/Istanbul)
+- Unlock tarihi geçmiş mi?
+
+## Lisans 📄
+
+MIT License - İstediğin gibi kullan!
+
+## Katkıda Bulunma 🤝
+
+Pull request'ler hoş geldiniz! Büyük değişiklikler için önce issue açın.
+
+## İletişim 📧
+
+Sorular için: [email]
 
 ---
 
-## 🎨 Tasarım Konsepti
-
-### Renk Paleti
-- Primary: `#6366f1` (Indigo)
-- Secondary: `#8b5cf6` (Purple)
-- Accent: `#ec4899` (Pink)
-- Gradient: `135deg, #6366f1 → #8b5cf6 → #ec4899`
-
-### Tema
-- **Sinir Ağları:** Animated nodes ve connections
-- **Glassmorphism:** Blur effects, transparency
-- **Gradient:** Mor-mavi-pembe geçişler
-- **Dark Mode:** `#0f0f23` background
-
----
-
-## 📱 Responsive Breakpoints
-
-- **Desktop:** 1024px+
-- **Tablet:** 768px - 1024px
-- **Mobile:** < 768px
-
-Tüm sayfalar mobil-first yaklaşımla tasarlandı.
-
----
-
-## 🔮 Gelecek Özellikler (v3.0)
-
-- [ ] Email notifications (kapsül açılmadan önce)
-- [ ] Sosyal medya paylaşımı
-- [ ] Tema seçenekleri (light/dark/custom)
-- [ ] Çoklu dil desteği
-- [ ] Admin panel (tüm kapsüller)
-- [ ] Analytics dashboard
-- [ ] Capsule templates
-- [ ] Collaborative capsules
-
----
-
-## 🐛 Sorun Giderme
-
-### "Internal Server Error" - Foto Yükleme
-**Çözüm:** R2 credentials kontrol et, veritabanı migration yapıldı mı bak
-
-### Countdown Çalışmıyor
-**Çözüm:** `countdown.js` yüklendiğinden emin ol, browser console'u kontrol et
-
-### Static Files 404
-**Çözüm:** `app.mount("/static", ...)` satırı eklenmiş mi kontrol et
-
-### Template Bulunamıyor
-**Çözüm:** `templates/` klasörü doğru konumda mı kontrol et
-
----
-
-## 📝 Lisans
-
-MIT License - Özgürce kullanabilirsiniz.
-
----
-
-## 🤝 Katkıda Bulunma
-
-Pull request'ler kabul edilir. Büyük değişiklikler için önce issue açın.
-
----
-
-## 💬 İletişim
-
-Sorular için GitHub Issues kullanabilirsiniz.
-
----
-
-**Made with 🧠 and ❤️ by NexusMemoir Team**
+**NexusMemoir** - Anılarını dünyaya göm 🌍💫

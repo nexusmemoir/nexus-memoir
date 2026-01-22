@@ -1,160 +1,163 @@
-# 🚀 DEPLOYMENT CHECKLIST
+# NexusMemoir - Hızlı Başlangıç Rehberi 🚀
 
-## ✅ Adım Adım Deploy Rehberi
+## Yerel Geliştirme (5 Dakika)
 
-### 1️⃣ Dosyaları Projeye Kopyala
-
+### 1. Kurulum
 ```bash
-# Tüm yeni dosyaları git'e ekle:
-git add app.py
-git add templates/
-git add static/
-git add README.md
+# Sanal ortam oluştur
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# veya: venv\Scripts\activate  # Windows
 
-# Commit
-git commit -m "feat: Add modern neural-themed UI with countdown timer
-
-- New landing page with animated neural network background
-- Redesigned dashboard with glassmorphism UI
-- Live countdown timer for locked capsules
-- Modern claim page
-- Responsive mobile design
-- Updated templates and static assets"
-
-# Push
-git push origin main
+# Bağımlılıkları yükle
+pip install -r requirements.txt
 ```
 
-### 2️⃣ Render.com'da Kontrol Et
+### 2. Environment Variables
+`.env` dosyası mevcut! Şunları güncelle:
+- `R2_ENDPOINT` - Cloudflare R2 endpoint
+- `R2_ACCESS_KEY_ID` - R2 access key
+- `R2_SECRET_ACCESS_KEY` - R2 secret key
+- `R2_BUCKET` - Bucket adın (örn: nexusmemoir-media)
 
-- [ ] Render dashboard'a git
-- [ ] Yeni deploy başladığını gör
-- [ ] Build logs'u izle
-- [ ] "Build successful" mesajını bekle
-- [ ] "Live" durumuna geçmesini bekle
-
-### 3️⃣ Test Et
-
-**Landing Page:**
-- [ ] `https://your-app.onrender.com/` → Modern landing page açılıyor mu?
-- [ ] Neural network animasyonu çalışıyor mu?
-- [ ] Scroll smooth çalışıyor mu?
-- [ ] CTA butonları doğru yönlendiriyor mu?
-
-**Admin:**
-- [ ] `/admin/create?p=PASSWORD` → Kapsül oluşturuluyor mu?
-- [ ] QR link ve PIN görünüyor mu?
-
-**Claim:**
-- [ ] QR link'i aç
-- [ ] PIN gir
-- [ ] Dashboard'a yönlendiriliyor mu?
-
-**Dashboard:**
-- [ ] Zaman ayarlama çalışıyor mu?
-- [ ] Metin ekleme çalışıyor mu?
-- [ ] Foto yükleme çalışıyor mu?
-- [ ] Video yükleme çalışıyor mu?
-
-**Countdown:**
-- [ ] Zaman ayarlandıktan sonra countdown görünüyor mu?
-- [ ] Saniyeler düzgün sayıyor mu?
-- [ ] Progress bar'lar doğru gösteriliyor mu?
-
-### 4️⃣ Veritabanı Migration (Otomatik)
-
-Uygulama ilk çalıştığında:
-- [ ] Eski `media` tablosu varsa drop edilip yeniden oluşturulacak
-- [ ] Logs'ta "[DB] Database initialized successfully!" görünmeli
-
-Eğer sorun varsa:
+### 3. Çalıştır
 ```bash
-# Render'da DB_PATH değişkenini değiştir:
-DB_PATH=/var/data/db_v2.sqlite3
+uvicorn app:app --reload --port 8000
 ```
 
-### 5️⃣ Mobil Test
-
-- [ ] iPhone/Android'den aç
-- [ ] Touch scroll çalışıyor mu?
-- [ ] Butonlar responsive mi?
-- [ ] Forms mobile'da kullanılabilir mi?
-
-### 6️⃣ Production Checklist
-
-- [ ] ADMIN_PASSWORD güçlü bir şifre mi?
-- [ ] SECRET_KEY uzun ve rastgele mi?
-- [ ] R2 bucket private mı?
-- [ ] CORS ayarları doğru mu?
-- [ ] Error handling çalışıyor mu?
+Tarayıcıda aç: http://localhost:8000
 
 ---
 
-## 🐛 Olası Sorunlar ve Çözümler
+## Render Deploy (10 Dakika)
 
-### Sorun: "Internal Server Error" - Foto yükleme
-**Çözüm:**
-1. Render logs'u kontrol et
-2. R2 credentials doğru mu kontrol et
-3. Veritabanı migration oldu mu bak
-4. `/admin/create` ile yeni kapsül oluştur
+### Gereksinimler
+✅ GitHub hesabı
+✅ Cloudflare R2 hesabı (ücretsiz)
+✅ Render hesabı (ücretsiz)
 
-### Sorun: Static files 404
-**Çözüm:**
-1. `static/` klasörü repo'da var mı kontrol et
-2. `app.py`'de `app.mount("/static", ...)` var mı bak
-3. Git'e düzgün eklendi mi kontrol et
-
-### Sorun: Template not found
-**Çözüm:**
-1. `templates/` klasörü repo'da var mı
-2. Dosya isimleri doğru mu: `landing.html`, `claim.html`, `dashboard.html`
-
-### Sorun: Countdown çalışmıyor
-**Çözüm:**
-1. Browser console'da JS hataları var mı bak
-2. `countdown.js` yükleniyor mu kontrol et
-3. `data-unlock` attribute doğru mu kontrol et
-
----
-
-## 🎉 Deploy Başarılı!
-
-Artık şunları yapabilirsin:
-
-1. **Landing page'i paylaş** - Ürünü tanıt
-2. **Demo kapsüller oluştur** - Test et
-3. **Countdown'ı test et** - 2-3 dakika sonrasına ayarla
-4. **Mobil'den dene** - QR okut
-5. **Domain ekle** - (İsteğe bağlı) Cloudflare Pages ile
-
----
-
-## 📊 Sonraki Adımlar
-
-### Domain Almak İstersen:
-
-1. Domain satın al (ör: nexusmemoir.com)
-2. Cloudflare'e ekle
-3. Render'da custom domain ayarla
-4. SSL otomatik gelir
-
-### Analytics Eklemek İstersen:
-
-```html
-<!-- landing.html <head> içine -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=YOUR-ID"></script>
+### Adım 1: GitHub'a Yükle
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin <your-repo-url>
+git push -u origin main
 ```
 
-### SEO İyileştirmesi:
+### Adım 2: Cloudflare R2 Kur
 
-```html
-<meta name="description" content="Zamanı kilitle. Zihnini sakla. Neural-inspired dijital zaman kapsülleri.">
-<meta name="keywords" content="time capsule, dijital kapsül, anı saklama">
-<meta property="og:title" content="NexusMemoir">
-<meta property="og:description" content="Zamanı kilitle. Zihnini sakla.">
+1. https://dash.cloudflare.com → R2
+2. "Enable R2" (ücretsiz)
+3. Create Bucket → `nexusmemoir-media`
+4. Manage R2 API Tokens → Create API Token
+   - Name: nexusmemoir-api
+   - Permissions: Object Read & Write
+5. Token bilgilerini kaydet (bir daha görmeyeceksin!)
+
+### Adım 3: Render'da Deploy
+
+1. https://render.com → Sign Up (GitHub ile)
+2. Dashboard → New → Web Service
+3. Connect GitHub repo'nu
+4. Settings:
+   - **Name**: nexusmemoir
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+
+5. **Environment Variables ekle**:
+   ```
+   SECRET_KEY = <rastgele-uzun-string>
+   ADMIN_PASSWORD = <admin-şifren>
+   R2_ENDPOINT = https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
+   R2_ACCESS_KEY_ID = <r2-access-key>
+   R2_SECRET_ACCESS_KEY = <r2-secret-key>
+   R2_BUCKET = nexusmemoir-media
+   DB_PATH = /var/data/db.sqlite3
+   ```
+
+6. **Disk ekle** (Database için):
+   - Dashboard → Disks → Add Disk
+   - Name: nexusmemoir-data
+   - Mount Path: /var/data
+   - Size: 1GB (ücretsiz)
+
+7. "Create Web Service" → Bekle (2-3 dakika)
+
+### Adım 4: Test Et!
+
+Deploy tamamlandıktan sonra:
+```
+https://your-app-name.onrender.com
 ```
 
 ---
 
-**Tebrikler! 🎉 Uygulamam artık production'da!**
+## Mapbox Token (Opsiyonel - Daha İyi Haritalar)
+
+Şu an harita çalışıyor ama Mapbox token eklemek daha iyi görünüm sağlar:
+
+1. https://www.mapbox.com → Sign Up (ücretsiz)
+2. Access Tokens → Create Token
+3. Token'ı kopyala
+
+4. Bu dosyalarda güncelFle:
+   - `static/js/create-sync.js` (satır 7)
+   - `static/js/map-landing.js` (satır 1)
+   
+   ```javascript
+   mapboxgl.accessToken = 'pk.YOUR_TOKEN_HERE';
+   ```
+
+5. Git push yap → Render otomatik deploy eder
+
+---
+
+## Sorun Giderme
+
+### "R2 PUT FAILED" Hatası
+✓ R2 credentials doğru mu kontrol et
+✓ Bucket adı tam olarak eşleşiyor mu?
+✓ API token'ın "Object Read & Write" yetkisi var mı?
+
+### Harita Yüklenmiyor
+✓ Mapbox token geçerli mi?
+✓ Browser console'da hata var mı? (F12)
+
+### Database Hatası (Render'da)
+✓ Disk mount edildi mi? (/var/data)
+✓ DB_PATH environment variable doğru mu?
+
+---
+
+## Test Senaryosu
+
+1. **Ana Sayfa** → Haritada kapsüller görünüyor mu?
+2. **Kapsül Oluştur** → Haritada lokasyon seç
+3. **Bilgileri Doldur** → Başlık + tarih
+4. **Success Page** → QR kod + PIN göründü mü?
+5. **Claim** → QR ile veya /claim?token=XXX
+6. **Dashboard** → İçerik ekle (metin, foto, video)
+7. **Tarih Geç** → Countdown çalışıyor mu?
+8. **Açılış** → İçerikler görünür mü?
+
+---
+
+## İpuçları
+
+💡 **Geliştirme**: `.env` dosyasını kullan
+💡 **Production**: Render environment variables kullan
+💡 **Test**: Unlock zamanını 2 dakika sonraya ayarla
+💡 **Debug**: Render Logs sekmesinden log'ları takip et
+💡 **Backup**: SQLite veritabanını düzenli yedekle
+
+---
+
+## Destek Gerekirse
+
+- README.md dosyasına bak
+- Render logs kontrol et
+- GitHub issues aç
+- Cloudflare R2 docs: https://developers.cloudflare.com/r2/
+
+**Başarılar! 🚀**
