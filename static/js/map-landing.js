@@ -1,29 +1,21 @@
-// Map Landing - 2D Interactive Map with Balloon Capsules
+// Map Landing - Turkey Focused with Dot Markers
 
 // Mapbox Access Token
 mapboxgl.accessToken = 'pk.eyJ1IjoibmV4dXNtZW1vaXIiLCJhIjoiY21rb2sycXN4MDhnMTNjc2FxYWtxaXY1byJ9.PEZQ7jJ02OJZ0ndCVEcc8g';
 
-// Sample capsule data (will come from API later)
+// Sample capsule data (Turkey locations only)
 const sampleCapsules = [
-    { id: 1, lat: 41.0082, lng: 28.9784, title: "Ela'nın İlk Adımları", date: "14 Mayıs 2028", zone: "premium", status: "locked" },
-    { id: 2, lat: 48.8566, lng: 2.3522, title: "Notre Amour Éternel", date: "25 Aralık 2026", zone: "premium", status: "locked" },
-    { id: 3, lat: 35.6762, lng: 139.6503, title: "桜の思い出", date: "3 Nisan 2027", zone: "premium", status: "locked" },
-    { id: 4, lat: 40.7128, lng: -74.0060, title: "Times Square Memories", date: "31 Aralık 2026", zone: "premium", status: "locked" },
-    { id: 5, lat: 38.4237, lng: 27.1428, title: "Ege'nin Mavi Anıları", date: "15 Haziran 2027", zone: "popular", status: "locked" },
-    { id: 6, lat: 52.5200, lng: 13.4050, title: "Berlin Love Story", date: "9 Kasım 2027", zone: "popular", status: "locked" },
-    { id: 7, lat: 37.8667, lng: 32.4833, title: "Konya Anıları", date: "10 Mart 2028", zone: "standard", status: "locked" },
-    { id: 8, lat: 51.5074, lng: -0.1278, title: "London Calling", date: "1 Ocak 2027", zone: "premium", status: "locked" },
+    { id: 1, lat: 41.0082, lng: 28.9784, title: "Ela'nın İlk Adımları", date: "14 Mayıs 2028", city: "Istanbul", status: "locked" },
+    { id: 2, lat: 39.9334, lng: 32.8597, title: "Ankara Anıları", date: "25 Aralık 2026", city: "Ankara", status: "locked" },
+    { id: 3, lat: 38.4237, lng: 27.1428, title: "Ege'nin Mavi Anıları", date: "15 Haziran 2027", city: "Izmir", status: "locked" },
+    { id: 4, lat: 36.8969, lng: 30.7133, title: "Akdeniz Rüyası", date: "1 Ağustos 2027", city: "Antalya", status: "locked" },
+    { id: 5, lat: 37.0000, lng: 35.3213, title: "Adana Güneşi", date: "10 Mart 2028", city: "Adana", status: "locked" },
+    { id: 6, lat: 40.1826, lng: 29.0670, title: "Bursa Yeşili", date: "5 Mayıs 2027", city: "Bursa", status: "locked" },
+    { id: 7, lat: 37.8667, lng: 32.4833, title: "Konya'dan Mesajlar", date: "20 Haziran 2028", city: "Konya", status: "locked" },
+    { id: 8, lat: 36.2000, lng: 36.1600, title: "Hatay Lezzeti", date: "15 Ekim 2027", city: "Hatay", status: "locked" }
 ];
 
-// Zone colors
-const zoneColors = {
-    premium: '#ff6b9d',
-    popular: '#ffa94d',
-    standard: '#ffd93d',
-    basic: '#95e1d3'
-};
-
-// Initialize map
+// Initialize map (Turkey focused)
 const map = new mapboxgl.Map({
     container: 'mainMap',
     style: {
@@ -48,34 +40,42 @@ const map = new mapboxgl.Map({
                 type: 'raster',
                 source: 'carto-light',
                 paint: {
-                    'raster-opacity': 0.85
+                    'raster-opacity': 0.9
                 }
             }
         ]
     },
-    center: [20, 30],
-    zoom: 2,
-    minZoom: 2,
-    maxZoom: 18
+    center: [35.2433, 38.9637], // Turkey center
+    zoom: 6,
+    minZoom: 5.5,
+    maxZoom: 18,
+    maxBounds: [[25, 35], [45, 43]] // Turkey bounds
 });
 
 // Add navigation controls
 map.addControl(new mapboxgl.NavigationControl());
 
-// Create balloon marker HTML
-function createBalloonHTML(capsule) {
-    const color = zoneColors[capsule.zone];
+// Create dot marker (no balloon, just a dot)
+function createDotMarker() {
+    const el = document.createElement('div');
+    el.className = 'capsule-dot';
+    el.innerHTML = `
+        <div class="dot-inner"></div>
+        <div class="dot-ring"></div>
+    `;
+    return el;
+}
+
+// Create popup content
+function createPopupContent(capsule) {
     const icon = capsule.status === 'locked' ? '🔒' : '🎉';
     
     return `
-        <div class="balloon-marker" style="border-color: ${color};">
-            <div class="balloon-content">
-                <div class="balloon-title">${capsule.title}</div>
-                <div class="balloon-date">${capsule.date}</div>
-                <div class="balloon-status">${icon} ${capsule.status === 'locked' ? 'Kilitli' : 'Açık'}</div>
-            </div>
-            <div class="balloon-pointer" style="border-top-color: ${color};"></div>
-            <div class="balloon-pin" style="background: ${color};"></div>
+        <div class="capsule-popup">
+            <div class="popup-title">${capsule.title}</div>
+            <div class="popup-city">📍 ${capsule.city}</div>
+            <div class="popup-date">${capsule.date}</div>
+            <div class="popup-status">${icon} ${capsule.status === 'locked' ? 'Kilitli' : 'Açık'}</div>
         </div>
     `;
 }
@@ -83,131 +83,151 @@ function createBalloonHTML(capsule) {
 // Add markers when map loads
 map.on('load', function() {
     sampleCapsules.forEach(capsule => {
-        const el = document.createElement('div');
-        el.className = 'custom-marker-container';
-        el.innerHTML = createBalloonHTML(capsule);
+        const el = createDotMarker();
         
-        // Add hover effect
-        el.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.1) translateY(-5px)';
-        });
+        // Create popup (opens on click, not hover)
+        const popup = new mapboxgl.Popup({
+            offset: 25,
+            closeButton: true,
+            closeOnClick: false,
+            maxWidth: '300px'
+        }).setHTML(createPopupContent(capsule));
         
-        el.addEventListener('mouseleave', function() {
-            this.style.transform = 'scale(1) translateY(0)';
-        });
-        
-        // Click to show detail
-        el.addEventListener('click', function() {
-            alert(`${capsule.title}\nAçılış: ${capsule.date}\nDurum: ${capsule.status === 'locked' ? 'Kilitli' : 'Açık'}`);
-        });
-        
-        new mapboxgl.Marker({
+        // Add marker with popup
+        const marker = new mapboxgl.Marker({
             element: el,
-            anchor: 'bottom'
+            anchor: 'center'
         })
         .setLngLat([capsule.lng, capsule.lat])
+        .setPopup(popup)
         .addTo(map);
+        
+        // Click to toggle popup
+        el.addEventListener('click', () => {
+            marker.togglePopup();
+        });
     });
-    
-    // Add gentle rotation animation
-    let rotation = 0;
-    function rotateCamera() {
-        map.rotateTo(rotation, { duration: 200000 });
-        rotation = (rotation + 360) % 360;
-        setTimeout(rotateCamera, 200000);
-    }
-    // rotateCamera(); // Uncomment for slow rotation
 });
 
-// Add CSS for balloon markers
+// Add CSS for dot markers and popups
 const style = document.createElement('style');
 style.textContent = `
-    .custom-marker-container {
+    .capsule-dot {
+        width: 20px;
+        height: 20px;
         cursor: pointer;
-        transition: transform 0.3s ease;
+        position: relative;
+        transition: transform 0.2s;
     }
     
-    .balloon-marker {
-        position: relative;
-        background: rgba(255, 255, 255, 0.98);
-        padding: 12px 16px;
-        border-radius: 16px;
-        border: 3px solid;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    .capsule-dot:hover {
+        transform: scale(1.4);
+    }
+    
+    .dot-inner {
+        width: 12px;
+        height: 12px;
+        background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 15px rgba(255, 107, 157, 0.7);
+        animation: pulse-dot 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-dot {
+        0%, 100% {
+            box-shadow: 0 0 15px rgba(255, 107, 157, 0.7);
+        }
+        50% {
+            box-shadow: 0 0 25px rgba(255, 107, 157, 1);
+        }
+    }
+    
+    .dot-ring {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 107, 157, 0.4);
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        animation: ring-expand 2s ease-in-out infinite;
+    }
+    
+    @keyframes ring-expand {
+        0%, 100% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: translate(-50%, -50%) scale(1.5);
+            opacity: 0.3;
+        }
+    }
+    
+    /* Popup Styles */
+    .capsule-popup {
+        padding: 0.25rem;
         min-width: 180px;
-        backdrop-filter: blur(10px);
-        animation: float 3s ease-in-out infinite;
     }
     
-    @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-5px); }
-    }
-    
-    .balloon-content {
-        position: relative;
-        z-index: 2;
-    }
-    
-    .balloon-title {
-        font-size: 14px;
+    .popup-title {
+        font-size: 15px;
         font-weight: 700;
         color: #0f0f23;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
         line-height: 1.3;
     }
     
-    .balloon-date {
-        font-size: 12px;
+    .popup-city {
+        font-size: 13px;
         color: #64748b;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
     
-    .balloon-status {
-        font-size: 11px;
-        font-weight: 600;
+    .popup-date {
+        font-size: 13px;
         color: #64748b;
-        background: rgba(255, 255, 255, 0.8);
-        padding: 4px 8px;
+        margin-bottom: 8px;
+    }
+    
+    .popup-status {
+        font-size: 12px;
+        font-weight: 600;
+        color: white;
+        background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+        padding: 6px 12px;
         border-radius: 8px;
         display: inline-block;
     }
     
-    .balloon-pointer {
-        position: absolute;
-        bottom: -12px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 12px solid transparent;
-        border-right: 12px solid transparent;
-        border-top: 12px solid;
-        z-index: 1;
-    }
-    
-    .balloon-pin {
-        position: absolute;
-        bottom: -32px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 12px;
-        height: 20px;
-        border-radius: 50% 50% 50% 0;
-        transform: translateX(-50%) rotate(-45deg);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    
-    .balloon-pin::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(45deg);
-        width: 6px;
-        height: 6px;
+    .mapboxgl-popup-content {
         background: white;
-        border-radius: 50%;
+        padding: 14px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        border: 2px solid rgba(255, 107, 157, 0.4);
+    }
+    
+    .mapboxgl-popup-close-button {
+        font-size: 20px;
+        color: #94a3b8;
+        padding: 4px 8px;
+        font-weight: 300;
+    }
+    
+    .mapboxgl-popup-close-button:hover {
+        color: #ff6b9d;
+        background: transparent;
+    }
+    
+    .mapboxgl-popup-tip {
+        border-top-color: white;
+        border-width: 10px;
     }
 `;
 document.head.appendChild(style);
@@ -215,31 +235,37 @@ document.head.appendChild(style);
 // Animate stats on page load
 function animateStats() {
     const totalEl = document.getElementById('totalCapsules');
-    const countriesEl = document.getElementById('countries');
+    const citiesEl = document.getElementById('countries');
     
     if (totalEl) {
         let count = 0;
-        const target = 156;
+        const target = 89;
         const interval = setInterval(() => {
-            count += 3;
+            count += 2;
             if (count >= target) {
                 count = target;
                 clearInterval(interval);
             }
             totalEl.textContent = count;
-        }, 20);
+        }, 25);
     }
     
-    if (countriesEl) {
+    if (citiesEl) {
+        // Change label to "İl"
+        const label = citiesEl.nextElementSibling;
+        if (label && label.classList.contains('stat-label-compact')) {
+            label.textContent = 'İl';
+        }
+        
         let count = 0;
-        const target = 34;
+        const target = 47;
         const interval = setInterval(() => {
             count += 1;
             if (count >= target) {
                 count = target;
                 clearInterval(interval);
             }
-            countriesEl.textContent = count;
+            citiesEl.textContent = count;
         }, 50);
     }
 }
@@ -257,4 +283,4 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-console.log('Map Landing initialized - 2D interactive map with balloon capsules!');
+console.log('Turkey-focused map initialized with dot markers!');

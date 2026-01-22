@@ -1,73 +1,17 @@
-// Create Page Sync - Mapbox + Dig Animation + Zone System
+// Create Page - Turkey Focused + Shovel Animation
 
 // Mapbox token
 mapboxgl.accessToken = 'pk.eyJ1IjoibmV4dXNtZW1vaXIiLCJhIjoiY21rb2sycXN4MDhnMTNjc2FxYWtxaXY1byJ9.PEZQ7jJ02OJZ0ndCVEcc8g';
 
-// Zone definitions (same as landing)
-const zones = {
-    premium: {
-        name: "Premium Zone",
-        price: 1500,
-        color: "#ff6b9d",
-        cities: [
-            { lat: 41.0082, lng: 28.9784, name: "Istanbul" },
-            { lat: 39.9334, lng: 32.8597, name: "Ankara" },
-            { lat: 48.8566, lng: 2.3522, name: "Paris" },
-            { lat: 51.5074, lng: -0.1278, name: "London" },
-            { lat: 40.7128, lng: -74.0060, name: "New York" },
-            { lat: 35.6762, lng: 139.6503, name: "Tokyo" },
-            { lat: 25.2048, lng: 55.2708, name: "Dubai" },
-            { lat: 34.0522, lng: -118.2437, name: "Los Angeles" },
-            { lat: -33.8688, lng: 151.2093, name: "Sydney" },
-            { lat: 55.7558, lng: 37.6173, name: "Moscow" }
-        ]
-    },
-    popular: {
-        name: "Popular Zone",
-        price: 999,
-        color: "#ffa94d",
-        cities: [
-            { lat: 38.4237, lng: 27.1428, name: "Izmir" },
-            { lat: 36.8969, lng: 30.7133, name: "Antalya" },
-            { lat: 40.1826, lng: 29.0670, name: "Bursa" },
-            { lat: 52.5200, lng: 13.4050, name: "Berlin" },
-            { lat: 41.9028, lng: 12.4964, name: "Rome" },
-            { lat: 40.4168, lng: -3.7038, name: "Madrid" },
-            { lat: 52.3676, lng: 4.9041, name: "Amsterdam" },
-            { lat: 13.7563, lng: 100.5018, name: "Bangkok" },
-            { lat: 1.3521, lng: 103.8198, name: "Singapore" },
-            { lat: 37.5665, lng: 126.9780, name: "Seoul" }
-        ]
-    },
-    standard: {
-        name: "Standard Zone",
-        price: 699,
-        color: "#ffd93d",
-        cities: [
-            { lat: 37.0000, lng: 35.3213, name: "Adana" },
-            { lat: 37.8667, lng: 32.4833, name: "Konya" },
-            { lat: 37.0660, lng: 37.3781, name: "Gaziantep" },
-            { lat: 48.2082, lng: 16.3738, name: "Vienna" },
-            { lat: 37.9838, lng: 23.7275, name: "Athens" },
-            { lat: 38.7223, lng: -9.1393, name: "Lisbon" },
-            { lat: 47.4979, lng: 19.0402, name: "Budapest" }
-        ]
-    },
-    basic: {
-        name: "Basic Zone",
-        price: 499,
-        color: "#95e1d3",
-        cities: []
-    }
-};
+// Single price for all Turkey
+const PRICE = 499;
 
 let selectedLat = null;
 let selectedLng = null;
 let selectedLocationName = '';
-let selectedZone = null;
 let userMarker = null;
 
-// Initialize map (same style as landing)
+// Initialize map (Turkey focused, same as landing)
 const map = new mapboxgl.Map({
     container: 'createMap',
     style: {
@@ -92,102 +36,72 @@ const map = new mapboxgl.Map({
                 type: 'raster',
                 source: 'carto-light',
                 paint: {
-                    'raster-opacity': 0.85
+                    'raster-opacity': 0.9
                 }
             }
         ]
     },
-    center: [20, 30],
-    zoom: 3,
-    minZoom: 2,
-    maxZoom: 18
+    center: [35.2433, 38.9637], // Turkey center
+    zoom: 6,
+    minZoom: 5.5,
+    maxZoom: 18,
+    maxBounds: [[25, 35], [45, 43]] // Turkey bounds
 });
 
 // Add controls
 map.addControl(new mapboxgl.NavigationControl());
 
-// Determine zone from coordinates
-function getZoneByCoordinates(lat, lng) {
-    let closestZone = zones.basic;
-    let minDistance = Infinity;
-    
-    for (const [key, zone] of Object.entries(zones)) {
-        if (zone.cities.length === 0) continue;
-        
-        zone.cities.forEach(city => {
-            const distance = Math.sqrt(
-                Math.pow(lat - city.lat, 2) + 
-                Math.pow(lng - city.lng, 2)
-            );
-            
-            if (distance < 1.35 && distance < minDistance) {
-                minDistance = distance;
-                closestZone = zone;
-            }
-        });
-    }
-    
-    return closestZone;
+// Update info display
+function updateLocationInfo() {
+    document.getElementById('currentZoneName').textContent = 'Türkiye';
+    document.getElementById('currentZonePrice').textContent = `₺${PRICE}`;
 }
 
-// Update zone info display
-function updateZoneInfo(zone) {
-    document.getElementById('currentZoneName').textContent = zone.name;
-    document.getElementById('currentZonePrice').textContent = `₺${zone.price}`;
-    selectedZone = zone;
-}
+updateLocationInfo();
 
-// Create balloon marker HTML
-function createBalloonMarkerHTML(title, date, zone) {
-    return `
-        <div class="user-balloon-marker" style="border-color: ${zone.color};">
-            <div class="user-balloon-content">
-                <div class="user-balloon-title">${title || 'Kapsülün'}</div>
-                <div class="user-balloon-date">${date || 'Tarih belirle'}</div>
-                <div class="user-balloon-status">🔒 Kilitli</div>
-            </div>
-            <div class="user-balloon-pointer" style="border-top-color: ${zone.color};"></div>
-            <div class="user-balloon-pin" style="background: ${zone.color};"></div>
-        </div>
+// Create dot marker for user selection
+function createUserDotMarker() {
+    const el = document.createElement('div');
+    el.className = 'user-dot-marker';
+    el.innerHTML = `
+        <div class="user-dot-inner"></div>
+        <div class="user-dot-ring"></div>
     `;
+    return el;
 }
 
-// Dig animation
-function playDigAnimation() {
+// Shovel + dirt animation (3 seconds)
+function playShovelAnimation() {
     const overlay = document.getElementById('digAnimation');
     overlay.style.display = 'flex';
     
+    // Auto-hide after 3 seconds
     setTimeout(() => {
         overlay.style.display = 'none';
-    }, 2000);
+    }, 3000);
 }
 
-// Map click handler with dig animation
+// Map click handler
 map.on('click', function(e) {
     selectedLat = e.latlng.lat;
     selectedLng = e.latlng.lng;
     
-    // Play dig animation
-    playDigAnimation();
-    
-    // Determine zone
-    const zone = getZoneByCoordinates(selectedLat, selectedLng);
-    updateZoneInfo(zone);
+    // Play shovel animation
+    playShovelAnimation();
     
     // Remove existing marker
     if (userMarker) {
         userMarker.remove();
     }
     
-    // Wait for dig animation to finish
+    // Wait for animation
     setTimeout(() => {
-        // Add balloon marker
-        const el = document.createElement('div');
-        el.innerHTML = createBalloonMarkerHTML('Senin Kapsülün', 'Tarih belirle', zone);
+        // Add dot marker
+        const el = createUserDotMarker();
         
         userMarker = new mapboxgl.Marker({
             element: el,
-            anchor: 'bottom'
+            anchor: 'center'
         })
         .setLngLat([selectedLng, selectedLat])
         .addTo(map);
@@ -196,29 +110,29 @@ map.on('click', function(e) {
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLat}&lon=${selectedLng}`)
             .then(res => res.json())
             .then(data => {
-                const city = data.address.city || data.address.town || data.address.village || data.address.state;
-                const country = data.address.country;
-                selectedLocationName = city ? `${city}, ${country}` : country || 'Selected Location';
+                const city = data.address.city || data.address.town || data.address.village || data.address.province || data.address.state;
+                const province = data.address.province || data.address.state;
+                selectedLocationName = city ? `${city}, ${province || 'Türkiye'}` : (province || 'Türkiye');
                 
                 document.getElementById('locationName').textContent = selectedLocationName;
                 document.getElementById('locationCoords').textContent = 
-                    `Lat: ${selectedLat.toFixed(6)}, Lng: ${selectedLng.toFixed(6)} • ${zone.name}`;
+                    `Lat: ${selectedLat.toFixed(6)}, Lng: ${selectedLng.toFixed(6)}`;
                 document.getElementById('selectedLocation').style.display = 'block';
                 document.getElementById('continueBtn').disabled = false;
             })
             .catch(err => {
                 console.error('Geocoding error:', err);
-                selectedLocationName = 'Selected Location';
+                selectedLocationName = 'Seçilen Lokasyon';
                 document.getElementById('locationName').textContent = selectedLocationName;
                 document.getElementById('locationCoords').textContent = 
-                    `Lat: ${selectedLat.toFixed(6)}, Lng: ${selectedLng.toFixed(6)} • ${zone.name}`;
+                    `Lat: ${selectedLat.toFixed(6)}, Lng: ${selectedLng.toFixed(6)}`;
                 document.getElementById('selectedLocation').style.display = 'block';
                 document.getElementById('continueBtn').disabled = false;
             });
-    }, 1500);
+    }, 2500);
 });
 
-// Location search
+// Location search (Turkey cities)
 const searchInput = document.getElementById('locationSearch');
 let searchTimeout;
 
@@ -229,40 +143,22 @@ searchInput.addEventListener('input', function() {
     if (query.length < 2) return;
     
     searchTimeout = setTimeout(() => {
-        let found = false;
-        
-        for (const zone of Object.values(zones)) {
-            const city = zone.cities.find(c => 
-                c.name.toLowerCase().includes(query.toLowerCase())
-            );
-            
-            if (city) {
-                map.flyTo({ center: [city.lng, city.lat], zoom: 10, duration: 1500 });
-                setTimeout(() => {
-                    map.fire('click', { latlng: { lat: city.lat, lng: city.lng } });
-                }, 1600);
-                found = true;
-                break;
-            }
-        }
-        
-        if (!found) {
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        const result = data[0];
-                        const lat = parseFloat(result.lat);
-                        const lng = parseFloat(result.lon);
-                        
-                        map.flyTo({ center: [lng, lat], zoom: 12, duration: 1500 });
-                        setTimeout(() => {
-                            map.fire('click', { latlng: { lat, lng } });
-                        }, 1600);
-                    }
-                })
-                .catch(err => console.error('Search error:', err));
-        }
+        // Search within Turkey
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)},Turkey&countrycodes=tr`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const result = data[0];
+                    const lat = parseFloat(result.lat);
+                    const lng = parseFloat(result.lon);
+                    
+                    map.flyTo({ center: [lng, lat], zoom: 10, duration: 1500 });
+                    setTimeout(() => {
+                        map.fire('click', { latlng: { lat, lng } });
+                    }, 1600);
+                }
+            })
+            .catch(err => console.error('Search error:', err));
     }, 500);
 });
 
@@ -302,21 +198,13 @@ function nextStep(stepNumber) {
         
         document.getElementById('previewTitle').textContent = title;
         document.getElementById('previewDate').textContent = dateText;
-        
-        // Update balloon border color
-        const previewBalloon = document.querySelector('.preview-balloon');
-        if (selectedZone) {
-            previewBalloon.style.borderColor = selectedZone.color;
-            document.querySelector('.preview-balloon-pointer').style.borderTopColor = selectedZone.color;
-            document.querySelector('.preview-balloon-pin').style.background = selectedZone.color;
-        }
     }
     
     // Update payment info on step 4
-    if (stepNumber === 4 && selectedZone) {
-        document.getElementById('paymentPrice').textContent = `₺${selectedZone.price}`;
-        document.getElementById('paymentTotal').textContent = `₺${selectedZone.price}`;
-        document.getElementById('paymentZone').textContent = selectedZone.name;
+    if (stepNumber === 4) {
+        document.getElementById('paymentPrice').textContent = `₺${PRICE}`;
+        document.getElementById('paymentTotal').textContent = `₺${PRICE}`;
+        document.getElementById('paymentZone').textContent = 'Türkiye';
         document.getElementById('paymentLocation').textContent = selectedLocationName || '-';
         document.getElementById('paymentTitle').textContent = document.getElementById('capsuleTitle').value || '-';
     }
@@ -328,76 +216,151 @@ function prevStep(stepNumber) {
     nextStep(stepNumber);
 }
 
-// Add CSS for user balloon markers
+// Add CSS for user marker and shovel animation
 const style = document.createElement('style');
 style.textContent = `
-    .user-balloon-marker {
-        background: white;
-        padding: 12px 16px;
-        border-radius: 16px;
-        border: 3px solid;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        min-width: 180px;
-        animation: float 3s ease-in-out infinite;
+    /* User Dot Marker */
+    .user-dot-marker {
+        width: 24px;
+        height: 24px;
         cursor: pointer;
-    }
-    
-    @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-5px); }
-    }
-    
-    .user-balloon-content {
         position: relative;
-        z-index: 2;
     }
     
-    .user-balloon-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #0f0f23;
-        margin-bottom: 4px;
-    }
-    
-    .user-balloon-date {
-        font-size: 12px;
-        color: #64748b;
-        margin-bottom: 6px;
-    }
-    
-    .user-balloon-status {
-        font-size: 11px;
-        font-weight: 600;
-        color: #64748b;
-        background: rgba(255, 255, 255, 0.8);
-        padding: 4px 8px;
-        border-radius: 8px;
-        display: inline-block;
-    }
-    
-    .user-balloon-pointer {
+    .user-dot-inner {
+        width: 16px;
+        height: 16px;
+        background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+        border-radius: 50%;
         position: absolute;
-        bottom: -12px;
+        top: 50%;
         left: 50%;
-        transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 12px solid transparent;
-        border-right: 12px solid transparent;
-        border-top: 12px solid;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 20px rgba(255, 107, 157, 0.8);
+        animation: pulse-user 2s ease-in-out infinite;
     }
     
-    .user-balloon-pin {
+    @keyframes pulse-user {
+        0%, 100% {
+            box-shadow: 0 0 20px rgba(255, 107, 157, 0.8);
+        }
+        50% {
+            box-shadow: 0 0 35px rgba(255, 107, 157, 1);
+        }
+    }
+    
+    .user-dot-ring {
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(255, 107, 157, 0.5);
+        border-radius: 50%;
         position: absolute;
-        bottom: -32px;
+        top: 50%;
         left: 50%;
-        width: 12px;
-        height: 20px;
-        border-radius: 50% 50% 50% 0;
-        transform: translateX(-50%) rotate(-45deg);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transform: translate(-50%, -50%);
+        animation: ring-user 2s ease-in-out infinite;
+    }
+    
+    @keyframes ring-user {
+        0%, 100% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: translate(-50%, -50%) scale(1.6);
+            opacity: 0.2;
+        }
+    }
+    
+    /* Shovel Animation Overlay */
+    .dig-animation-overlay .shovel {
+        font-size: 10rem;
+        animation: digShovel 3s ease-in-out;
+    }
+    
+    @keyframes digShovel {
+        0% { 
+            transform: translateY(-150px) rotate(-60deg); 
+            opacity: 0;
+        }
+        15% {
+            transform: translateY(-50px) rotate(-45deg);
+            opacity: 1;
+        }
+        35% { 
+            transform: translateY(0) rotate(-20deg); 
+        }
+        50% { 
+            transform: translateY(30px) rotate(10deg); 
+        }
+        60% {
+            transform: translateY(20px) rotate(-5deg);
+        }
+        70% {
+            transform: translateY(0) rotate(-10deg);
+        }
+        85% {
+            transform: translateY(-100px) rotate(-50deg);
+            opacity: 1;
+        }
+        100% { 
+            transform: translateY(-200px) rotate(-70deg) scale(0.3); 
+            opacity: 0;
+        }
+    }
+    
+    .dig-animation-overlay .dirt-particles {
+        animation: showDirt 3s ease-in-out;
+    }
+    
+    @keyframes showDirt {
+        0%, 30% { opacity: 0; }
+        40% { opacity: 1; }
+        80% { opacity: 1; }
+        100% { opacity: 0; }
+    }
+    
+    .dig-animation-overlay .dirt:nth-child(1) {
+        animation: flyDirtLeft 1.5s ease-out;
+        animation-delay: 1.2s;
+    }
+    
+    .dig-animation-overlay .dirt:nth-child(2) {
+        animation: flyDirtUp 1.5s ease-out;
+        animation-delay: 1.3s;
+    }
+    
+    .dig-animation-overlay .dirt:nth-child(3) {
+        animation: flyDirtRight 1.5s ease-out;
+        animation-delay: 1.4s;
+    }
+    
+    @keyframes flyDirtLeft {
+        0% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(-120px, -80px) scale(0.3); opacity: 0; }
+    }
+    
+    @keyframes flyDirtUp {
+        0% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(0, -120px) scale(0.3); opacity: 0; }
+    }
+    
+    @keyframes flyDirtRight {
+        0% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(120px, -80px) scale(0.3); opacity: 0; }
+    }
+    
+    .dig-animation-overlay .dig-text {
+        animation: pulseDig 3s ease-in-out;
+    }
+    
+    @keyframes pulseDig {
+        0%, 100% { opacity: 0; }
+        20%, 80% { opacity: 1; }
+        40% { transform: scale(1.05); }
+        60% { transform: scale(0.95); }
     }
 `;
 document.head.appendChild(style);
 
-console.log('Create page sync initialized - Mapbox + dig animation + zones!');
+console.log('Turkey-focused create page initialized with shovel animation!');
