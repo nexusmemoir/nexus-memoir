@@ -26,6 +26,7 @@ except ImportError:
 from fastapi import FastAPI, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 # Config
@@ -53,6 +54,7 @@ R2_BUCKET = env_required("R2_BUCKET")
 DB_PATH = os.getenv("DB_PATH", "db.sqlite3")
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
