@@ -1,4 +1,4 @@
-// Map Landing - World Map with STABLE Dots (NO moving balloons!)
+// Map Landing - Stable Dots with NO jumping!
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibmV4dXNtZW1vaXIiLCJhIjoiY21rb2sycXN4MDhnMTNjc2FxYWtxaXY1byJ9.PEZQ7jJ02OJZ0ndCVEcc8g';
 
@@ -44,7 +44,6 @@ const map = new mapboxgl.Map({
 
 map.addControl(new mapboxgl.NavigationControl());
 
-// Create popup content
 function createPopupContent(capsule) {
     const icon = capsule.status === 'locked' ? '🔒' : '🎉';
     return `
@@ -57,42 +56,17 @@ function createPopupContent(capsule) {
     `;
 }
 
-// Add markers when map loads
 map.on('load', function() {
     sampleCapsules.forEach(capsule => {
-        // Create simple dot element
+        // Create stable dot element
         const el = document.createElement('div');
-        el.style.width = '20px';
-        el.style.height = '20px';
-        el.style.cursor = 'pointer';
-        el.style.position = 'relative';
+        el.className = 'stable-dot-marker';
         el.innerHTML = `
-            <div style="
-                width: 12px;
-                height: 12px;
-                background: linear-gradient(135deg, #ff6b9d, #ffa94d);
-                border-radius: 50%;
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                box-shadow: 0 0 15px rgba(255, 107, 157, 0.8);
-                animation: pulse-dot 2s ease-in-out infinite;
-            "></div>
-            <div style="
-                width: 20px;
-                height: 20px;
-                border: 2px solid rgba(255, 107, 157, 0.4);
-                border-radius: 50%;
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                animation: ring-expand 2s ease-in-out infinite;
-            "></div>
+            <div class="dot-core"></div>
+            <div class="dot-ring"></div>
         `;
         
-        // Create popup (closed by default)
+        // Create popup
         const popup = new mapboxgl.Popup({
             offset: 25,
             closeButton: true,
@@ -108,18 +82,7 @@ map.on('load', function() {
         .setLngLat([capsule.lng, capsule.lat])
         .addTo(map);
         
-        // Hover effect on dot
-        el.addEventListener('mouseenter', () => {
-            el.style.transform = 'scale(1.3)';
-            el.style.zIndex = '10';
-        });
-        
-        el.addEventListener('mouseleave', () => {
-            el.style.transform = 'scale(1)';
-            el.style.zIndex = '1';
-        });
-        
-        // Click to open popup
+        // Click to toggle popup
         el.addEventListener('click', () => {
             marker.setPopup(popup);
             marker.togglePopup();
@@ -127,15 +90,54 @@ map.on('load', function() {
     });
 });
 
-// Add CSS animations
+// Add CSS
 const style = document.createElement('style');
 style.textContent = `
-    @keyframes pulse-dot {
+    .stable-dot-marker {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.2s;
+    }
+    
+    .stable-dot-marker:hover {
+        transform: scale(1.3);
+        z-index: 10;
+    }
+    
+    .dot-core {
+        width: 12px;
+        height: 12px;
+        background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 15px rgba(255, 107, 157, 0.8);
+        animation: pulse-core 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-core {
         0%, 100% { box-shadow: 0 0 15px rgba(255, 107, 157, 0.8); }
         50% { box-shadow: 0 0 25px rgba(255, 107, 157, 1); }
     }
     
-    @keyframes ring-expand {
+    .dot-ring {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 107, 157, 0.4);
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        animation: ring-pulse 2s ease-in-out infinite;
+        pointer-events: none;
+    }
+    
+    @keyframes ring-pulse {
         0%, 100% {
             transform: translate(-50%, -50%) scale(1);
             opacity: 1;
@@ -164,14 +166,10 @@ style.textContent = `
         color: #ff6b9d;
         background: transparent;
     }
-    
-    .mapboxgl-popup-tip {
-        border-top-color: white;
-    }
 `;
 document.head.appendChild(style);
 
-// Animate stats
+// Stats animation
 function animateStats() {
     const totalEl = document.getElementById('totalCapsules');
     const citiesEl = document.getElementById('countries');
@@ -221,4 +219,4 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-console.log('Stable dots initialized - NO moving balloons!');
+console.log('Stable dots - NO jumping!');

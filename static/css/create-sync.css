@@ -1,4 +1,4 @@
-/* Create Page Sync - Mapbox + Dig Animation */
+/* Create Page Sync - Clean Version */
 
 .create-container {
     position: relative;
@@ -144,28 +144,6 @@
     margin-bottom: 1rem;
 }
 
-.zone-legend-mini {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.legend-mini-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-}
-
-.legend-mini-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid white;
-}
-
 /* Search Box */
 .location-search-box {
     position: absolute;
@@ -195,7 +173,7 @@
     color: var(--text-secondary);
 }
 
-/* Dig Animation Overlay */
+/* Dig Animation */
 .dig-animation-overlay {
     position: absolute;
     top: 0;
@@ -209,69 +187,6 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    animation: fadeIn 0.3s;
-}
-
-.shovel {
-    font-size: 8rem;
-    animation: digDown 1.5s ease-in-out;
-}
-
-@keyframes digDown {
-    0% { transform: translateY(-100px) rotate(-45deg); }
-    30% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(20px) rotate(15deg); }
-    70% { transform: translateY(0) rotate(0deg); }
-    100% { transform: translateY(-100px) rotate(-45deg) scale(0.5); opacity: 0; }
-}
-
-.dirt-particles {
-    position: absolute;
-    display: flex;
-    gap: 2rem;
-}
-
-.dirt {
-    font-size: 3rem;
-    animation: flyAway 1s ease-out forwards;
-}
-
-.dirt:nth-child(1) {
-    animation-delay: 0.5s;
-    animation-name: flyLeft;
-}
-
-.dirt:nth-child(2) {
-    animation-delay: 0.6s;
-    animation-name: flyUp;
-}
-
-.dirt:nth-child(3) {
-    animation-delay: 0.7s;
-    animation-name: flyRight;
-}
-
-@keyframes flyLeft {
-    0% { transform: translate(0, 0) scale(1); opacity: 1; }
-    100% { transform: translate(-100px, -50px) scale(0.5); opacity: 0; }
-}
-
-@keyframes flyUp {
-    0% { transform: translate(0, 0) scale(1); opacity: 1; }
-    100% { transform: translate(0, -100px) scale(0.5); opacity: 0; }
-}
-
-@keyframes flyRight {
-    0% { transform: translate(0, 0) scale(1); opacity: 1; }
-    100% { transform: translate(100px, -50px) scale(0.5); opacity: 0; }
-}
-
-.dig-text {
-    margin-top: 2rem;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: white;
-    animation: pulse 1s infinite;
 }
 
 /* Selected Location */
@@ -294,7 +209,7 @@
     font-family: monospace;
 }
 
-/* Form Elements */
+/* Forms */
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -328,7 +243,7 @@
     margin-top: 0.5rem;
 }
 
-/* Capsule Preview */
+/* Preview */
 .capsule-preview {
     display: flex;
     flex-direction: column;
@@ -350,9 +265,9 @@
     animation: float 3s ease-in-out infinite;
 }
 
-.preview-balloon-content {
-    position: relative;
-    z-index: 2;
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
 }
 
 .preview-title {
@@ -378,31 +293,7 @@
     display: inline-block;
 }
 
-.preview-balloon-pointer {
-    position: absolute;
-    bottom: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 12px solid transparent;
-    border-right: 12px solid transparent;
-    border-top: 12px solid #ff6b9d;
-}
-
-.preview-balloon-pin {
-    position: absolute;
-    bottom: -32px;
-    left: 50%;
-    width: 12px;
-    height: 20px;
-    background: #ff6b9d;
-    border-radius: 50% 50% 50% 0;
-    transform: translateX(-50%) rotate(-45deg);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-/* Payment Summary */
+/* Payment */
 .payment-summary {
     padding: 2rem;
     background: rgba(255, 107, 157, 0.1);
@@ -444,7 +335,7 @@
     font-weight: 800;
 }
 
-/* Wizard Actions */
+/* Actions */
 .wizard-actions {
     display: flex;
     justify-content: space-between;
