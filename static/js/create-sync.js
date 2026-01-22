@@ -1,4 +1,4 @@
-// Create Page - 3-Tap (Mobile) + Double-Click (Desktop)
+// Create Wizard - Complete with Mock Payment
 (() => {
     if (window.__CREATE_SYNC_LOADED__) return;
     window.__CREATE_SYNC_LOADED__ = true;
@@ -40,9 +40,7 @@
     function createUserDotMarker() {
         const el = document.createElement('div');
         el.style.cssText = 'width:24px;height:24px;position:relative;';
-        el.innerHTML = `
-            <div style="width:16px;height:16px;background:linear-gradient(135deg,#ff6b9d,#ffa94d);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 20px rgba(255,107,157,0.8);"></div>
-        `;
+        el.innerHTML = '<div style="width:16px;height:16px;background:linear-gradient(135deg,#ff6b9d,#ffa94d);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 20px rgba(255,107,157,0.8);"></div>';
         return el;
     }
 
@@ -57,14 +55,11 @@
         selectedLng = lng;
         
         playShovelAnimation();
-        
         if (userMarker) userMarker.remove();
         
         setTimeout(() => {
             const el = createUserDotMarker();
-            userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-                .setLngLat([lng, lat])
-                .addTo(map);
+            userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map);
             
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
                 .then(res => res.json())
@@ -99,7 +94,6 @@
     // Mobile: 3 taps
     map.on('click', (e) => {
         tapCount++;
-        
         if (tapCount === 3) {
             clearTimeout(tapTimer);
             tapCount = 0;
@@ -145,7 +139,7 @@
         });
         
         if (stepNumber === 3) {
-            document.getElementById('previewTitle').textContent = document.getElementById('capsuleTitle').value || 'Kapsül İsmi';
+            document.getElementById('previewTitle').textContent = document.getElementById('capsuleTitle').value || 'Anı Kapsülü';
             const dateInput = document.getElementById('unlockDate').value;
             if (dateInput) {
                 const date = new Date(dateInput);
@@ -166,5 +160,51 @@
         window.nextStep(stepNumber);
     };
 
-    console.log('Map initialized: Desktop=double-click, Mobile=3-tap');
+    // Mock Payment - Direct API Call
+    window.completePurchase = async function() {
+        const title = document.getElementById('capsuleTitle').value;
+        const unlockDate = document.getElementById('unlockDate').value;
+        
+        if (!title || !unlockDate || !selectedLat || !selectedLng) {
+            alert('Lütfen tüm alanları doldurun');
+            return;
+        }
+        
+        const button = event.target;
+        button.disabled = true;
+        button.textContent = 'İşleniyor...';
+        
+        try {
+            // Create FormData
+            const formData = new FormData();
+            formData.append('lat', selectedLat);
+            formData.append('lng', selectedLng);
+            formData.append('title', title);
+            formData.append('unlock_at', unlockDate);
+            formData.append('location_name', selectedLocationName);
+            
+            const response = await fetch('/api/capsules/create', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Redirect to success page
+                window.location.href = `/success?token=${encodeURIComponent(data.token)}&pin=${encodeURIComponent(data.pin)}&qr=${encodeURIComponent(data.qr_code)}`;
+            } else {
+                alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
+                button.disabled = false;
+                button.textContent = 'Ödemeyi Tamamla';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Bağlantı hatası');
+            button.disabled = false;
+            button.textContent = 'Ödemeyi Tamamla';
+        }
+    };
+
+    console.log('Create wizard ready (3-tap mobile, double-click desktop)');
 })();

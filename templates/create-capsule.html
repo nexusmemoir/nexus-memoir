@@ -245,7 +245,7 @@
         </a>
 
         <h1>Kapsülünü Oluştur</h1>
-        <div class="subtitle">4 adımda zamanda saklanan anılarını göm</div>
+        <div class="subtitle">4 adımda gelecek için anı kapsülünü hazırla</div>
 
         <div class="wizard">
             <div class="progress">
@@ -256,8 +256,8 @@
             </div>
 
             <div class="wizard-step active" id="step1">
-                <div class="step-title">Kapsülünü Nereye Gömmek İstersin?</div>
-                <div class="step-desc"><b>Mobil:</b> 3 kez tıkla | <b>Masaüstü:</b> Çift tıkla</div>
+                <div class="step-title">Anı Kapsülünü Nereye Gömmek İstersiniz?</div>
+                <div class="step-desc">Haritada bir nokta seç ve iz bırak</div>
 
                 <div class="map-wrap">
                     <div class="map-topbar">
@@ -282,11 +282,11 @@
             </div>
 
             <div class="wizard-step" id="step2">
-                <div class="step-title">Kapsül Bilgileri</div>
-                <div class="step-desc">İsim ve açılış tarihi belirle</div>
+                <div class="step-title">Kapsül Detayları</div>
+                <div class="step-desc">Kime ve ne zaman açılsın?</div>
                 <div style="display:grid; gap:12px; text-align:left;">
-                    <label style="font-weight:800;">Kapsül İsmi</label>
-                    <input id="capsuleTitle" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;" placeholder="Örn: 2026'ya Mesajım" type="text"/>
+                    <label style="font-weight:800;">Kapsül Başlığı</label>
+                    <input id="capsuleTitle" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;" placeholder="Örn: 10 Yıl Sonraki Esra'ya Mesaj" type="text"/>
                     <label style="font-weight:800;">Açılış Tarihi</label>
                     <input id="unlockDate" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;" type="date"/>
                 </div>
@@ -297,10 +297,10 @@
             </div>
 
             <div class="wizard-step" id="step3">
-                <div class="step-title">Önizleme</div>
-                <div class="step-desc">Kapsül kartını kontrol et</div>
+                <div class="step-title">Kapsülünüzü Kontrol Edin</div>
+                <div class="step-desc">Haritada böyle görünecek</div>
                 <div style="max-width:420px;margin:0 auto;text-align:left;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.04);padding:14px;border-radius:16px;">
-                    <div style="font-weight:900;font-size:18px;" id="previewTitle">Kapsül İsmi</div>
+                    <div style="font-weight:900;font-size:18px;" id="previewTitle">Anı Kapsülü</div>
                     <div style="margin-top:6px;color:rgba(255,255,255,0.7);" id="previewDate">Açılış Tarihi</div>
                 </div>
                 <div class="actions">
@@ -311,9 +311,9 @@
 
             <div class="wizard-step" id="step4">
                 <div class="step-title">Ödeme</div>
-                <div class="step-desc">Detayları kontrol et</div>
+                <div class="step-desc">Kapsülünüzü tamamlayın</div>
                 <div style="text-align:left;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.04);padding:14px;border-radius:16px;display:grid;gap:8px;">
-                    <div><b>Ürün:</b> Zaman Kapsülü</div>
+                    <div><b>Ürün:</b> Anı Kapsülü</div>
                     <div><b>Konum:</b> <span id="paymentLocation">-</span></div>
                     <div><b>Başlık:</b> <span id="paymentTitle">-</span></div>
                     <hr style="border:none;border-top:1px solid rgba(255,255,255,0.10);"/>
@@ -321,7 +321,7 @@
                 </div>
                 <div class="actions">
                     <button class="btn" onclick="prevStep(3)">← Geri</button>
-                    <button class="btn btn-primary" onclick="alert('Ödeme sistemi bağlanacak')">Ödemeyi Tamamla</button>
+                    <button class="btn btn-primary" onclick="completePurchase()">Ödemeyi Tamamla</button>
                 </div>
             </div>
         </div>
@@ -330,7 +330,7 @@
     <div id="digAnimation">
         <div class="dig-animation-overlay">
             <div class="shovel" style="font-size:10rem;">🪏</div>
-            <div class="dig-text">Gömülüyor...</div>
+            <div class="dig-text">Anı kapsülünüz gömülüyor...</div>
             <div class="dirt-particles">
                 <div class="dirt"></div>
                 <div class="dirt"></div>
@@ -341,6 +341,6 @@
 
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <script src="/static/js/neural-bg.js"></script>
-    <script src="/static/js/create-sync.js"></script>
+    <script src="/static/js/create-sync-final.js"></script>
 </body>
 </html>
