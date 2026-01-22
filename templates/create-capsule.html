@@ -1,370 +1,667 @@
 <!DOCTYPE html>
-
 <html lang="tr">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Kapsül Oluştur - NexusMemoir</title>
-
-<link href="/static/images/nexusmemoir-logo.png" rel="icon" type="image/png"/>
-
-<!-- Mapbox CSS -->
-<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
-
-<!-- App CSS -->
-<link href="/static/css/app.css" rel="stylesheet"/>
-
-<style>
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: radial-gradient(circle at top, #1b0b2e, #070311);
-        color: #fff;
-        min-height: 100vh;
-    }
-
-    .create-container {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 40px 20px;
-        text-align: center;
-    }
-
-    .logo {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        align-items: center;
-        margin-bottom: 25px;
-        opacity: 0.95;
-    }
-
-    .logo img { width: 22px; height: 22px; }
-    .logo span { font-weight: 700; letter-spacing: 0.2px; }
-
-    h1 {
-        margin: 0;
-        font-size: 28px;
-        font-weight: 800;
-    }
-
-    .subtitle {
-        margin-top: 6px;
-        color: rgba(255,255,255,0.7);
-        font-size: 13px;
-    }
-
-    /* Wizard UI */
-    .wizard {
-        margin-top: 28px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 18px;
-        padding: 20px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-    }
-
-    .progress {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 18px;
-        flex-wrap: wrap;
-    }
-
-    .progress-step {
-        width: 34px;
-        height: 34px;
-        border-radius: 999px;
-        display: grid;
-        place-items: center;
-        font-weight: 800;
-        font-size: 12px;
-        border: 1px solid rgba(255,255,255,0.12);
-        color: rgba(255,255,255,0.7);
-        background: rgba(255,255,255,0.05);
-    }
-    .progress-step.active {
-        border-color: rgba(255,107,157,0.55);
-        background: rgba(255,107,157,0.18);
-        color: #fff;
-    }
-    .progress-step.completed {
-        border-color: rgba(120,255,214,0.5);
-        background: rgba(120,255,214,0.14);
-        color: #fff;
-    }
-
-    .wizard-step { display: none; }
-    .wizard-step.active { display: block; }
-
-    .step-title {
-        text-align: left;
-        font-size: 16px;
-        font-weight: 800;
-        margin: 0 0 10px 0;
-    }
-    .step-desc {
-        text-align: left;
-        margin: 0 0 14px 0;
-        color: rgba(255,255,255,0.7);
-        font-size: 13px;
-        line-height: 1.45;
-    }
-
-    /* Map area */
-    .map-wrap {
-        border-radius: 14px;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,0.10);
-        background: rgba(255,255,255,0.02);
-    }
-
-    #createMap {
-        width: 100%;
-        height: 380px;
-    }
-
-    .map-topbar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-        background: rgba(0,0,0,0.18);
-    }
-
-    .map-topbar input {
-        flex: 1;
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,0.12);
-        outline: none;
-        background: rgba(255,255,255,0.06);
-        color: #fff;
-    }
-
-    .info-card {
-        min-width: 160px;
-        text-align: left;
-        padding: 10px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.10);
-        background: rgba(0,0,0,0.20);
-    }
-    .info-card .label {
-        font-size: 11px;
-        color: rgba(255,255,255,0.6);
-        margin-bottom: 2px;
-    }
-    .info-card .value {
-        font-weight: 900;
-        letter-spacing: 0.2px;
-    }
-
-    /* Selected location */
-    #selectedLocation {
-        display: none;
-        margin-top: 12px;
-        text-align: left;
-        padding: 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.10);
-        background: rgba(255,255,255,0.04);
-    }
-    #selectedLocation .name {
-        font-weight: 900;
-        margin-bottom: 4px;
-    }
-    #selectedLocation .coords {
-        color: rgba(255,255,255,0.7);
-        font-size: 12px;
-    }
-
-    /* Buttons */
-    .actions {
-        margin-top: 16px;
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-    }
-    .btn {
-        padding: 11px 14px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.06);
-        color: #fff;
-        cursor: pointer;
-        font-weight: 800;
-    }
-    .btn-primary {
-        background: linear-gradient(135deg, #ff6b9d, #7c5cff);
-        border-color: rgba(255,107,157,0.35);
-    }
-    .btn:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-    }
-
-    /* Dig animation overlay */
-    #digAnimation {
-        position: fixed;
-        inset: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0,0,0,0.35);
-        z-index: 99999;
-        backdrop-filter: blur(2px);
-    }
-    .dig-animation-overlay {
-        text-align: center;
-        padding: 22px 26px;
-        border-radius: 18px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(20, 6, 38, 0.75);
-        box-shadow: 0 25px 80px rgba(0,0,0,0.55);
-    }
-    .dig-text {
-        margin-top: 8px;
-        font-weight: 900;
-        letter-spacing: 0.2px;
-    }
-    .dirt-particles { position: relative; height: 60px; margin-top: 10px; }
-    .dirt {
-        position: absolute;
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.75);
-        left: 50%;
-        top: 20px;
-    }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kapsül Oluştur - NexusMemoir</title>
+    <link rel="icon" type="image/png" href="/static/images/nexusmemoir-logo.png">
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="/static/css/app.css">
+    <link rel="stylesheet" href="/static/css/create-sync.css">
 </head>
-
 <body>
-<div class="create-container">
-    <div class="logo">
-        <img alt="logo" src="/static/images/nexusmemoir-logo.png"/>
-        <span>NexusMemoir</span>
-    </div>
 
-    <h1>Kapsülünü Oluştur</h1>
-    <div class="subtitle">4 adımda zamanda saklanan anılarını göm ve açılış tarihini belirle</div>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.75rem;">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="logo-icon" style="width: 32px; height: 32px;">
+                <span class="logo-text">NexusMemoir</span>
+            </a>
+            <div class="nav-actions">
+                <a href="/" class="btn-logout">Ana Sayfa</a>
+            </div>
+        </div>
+    </nav>
 
-    <div class="wizard">
-        <div class="progress">
-            <div class="progress-step active" data-step="1">1</div>
-            <div class="progress-step" data-step="2">2</div>
-            <div class="progress-step" data-step="3">3</div>
-            <div class="progress-step" data-step="4">4</div>
+    <div class="create-container">
+        <!-- Wizard Header -->
+        <div class="wizard-header">
+            <h1 class="wizard-title">Kapsülünü Oluştur</h1>
+            <p class="wizard-subtitle">4 basit adımda anılarını dünyaya göm</p>
         </div>
 
-        <!-- STEP 1 -->
-        <div class="wizard-step active" id="step1">
-            <div class="step-title">Kapsülünü Nereye Gömmek İstersin?</div>
-            <div class="step-desc">Haritada bir konuma <b>çift tıkla</b>. Kürek animasyonu oynar ve seçimin kaydedilir.</div>
+        <!-- Progress -->
+        <div class="wizard-progress">
+            <div class="progress-step active" data-step="1">
+                <div class="progress-number">1</div>
+                <div class="progress-label">Lokasyon</div>
+            </div>
+            <div class="progress-step" data-step="2">
+                <div class="progress-number">2</div>
+                <div class="progress-label">Bilgiler</div>
+            </div>
+            <div class="progress-step" data-step="3">
+                <div class="progress-number">3</div>
+                <div class="progress-label">İçerik</div>
+            </div>
+            <div class="progress-step" data-step="4">
+                <div class="progress-number">4</div>
+                <div class="progress-label">Ödeme</div>
+            </div>
+        </div>
 
-            <div class="map-wrap">
-                <div class="map-topbar">
-                    <input id="locationSearch" placeholder="Şehir, ilçe, ülke ara..." type="text"/>
-                    <div class="info-card">
-                        <div class="label">Bölge</div>
-                        <div class="value" id="currentZoneName">Dünya</div>
-                    </div>
-                    <div class="info-card">
-                        <div class="label">Fiyat</div>
-                        <div class="value" id="currentZonePrice">₺499</div>
+        <!-- Step 1: Location with Dig Animation -->
+        <div class="wizard-step active" id="step1">
+            <h2>📍 Kapsülünü Nereye Gömmek İstersin?</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Şehir/ilçe ara veya haritada bir yere <strong>çift tıkla!</strong> Kazma animasyonu ile kapsülünü göm.
+            </p>
+            
+            <div class="map-wrapper">
+                <!-- Price Info Card -->
+                <div class="zone-info-card">
+                    <div class="zone-label">Fiyat</div>
+                    <div class="zone-name" id="currentZoneName">Dünya Geneli</div>
+                    <div class="zone-price" id="currentZonePrice">₺499</div>
+                    <div style="padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; color: var(--text-secondary);">
+                        Dünyanın her yerinde tek fiyat
                     </div>
                 </div>
-                <div id="createMap"></div>
+
+                <!-- Search Box -->
+                <div class="location-search-box">
+                    <span>🔍</span>
+                    <input type="text" id="locationSearch" placeholder="Şehir ara... (ör: Istanbul)">
+                </div>
+
+                <!-- Map Container -->
+                <div id="createMap" class="create-map"></div>
+
+                <!-- Dig Animation Overlay -->
+                <div id="digAnimation" class="dig-animation-overlay" style="display: none;">
+                    <div class="shovel">🏗️</div>
+                    <div class="dirt-particles">
+                        <span class="dirt">💨</span>
+                        <span class="dirt">💨</span>
+                        <span class="dirt">💨</span>
+                    </div>
+                    <div class="dig-text">Gömülüyor...</div>
+                </div>
             </div>
 
-            <div id="selectedLocation">
-                <div class="name" id="locationName">-</div>
-                <div class="coords" id="locationCoords">-</div>
+            <div id="selectedLocation" class="selected-location" style="display: none;">
+                <div class="selected-location-title">✅ Lokasyon Seçildi:</div>
+                <div id="locationName" style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">-</div>
+                <div class="selected-location-coords" id="locationCoords">-</div>
             </div>
 
-            <div class="actions">
-                <div></div>
-                <button class="btn btn-primary" disabled id="continueBtn" onclick="nextStep(2)">Devam Et →</button>
+            <div class="wizard-actions">
+                <a href="/" class="btn-back">İptal</a>
+                <button class="btn-primary" onclick="nextStep(2)" id="continueBtn" disabled>
+                    <span>Devam Et</span>
+                    <span class="btn-arrow">→</span>
+                </button>
             </div>
         </div>
 
-        <!-- STEP 2 -->
+        <!-- Step 2: Info -->
         <div class="wizard-step" id="step2">
-            <div class="step-title">Kapsül Bilgileri</div>
-            <div class="step-desc">Bir isim belirle ve kapsül detaylarını doldur.</div>
+            <h2>✏️ Kapsülüne İsim Ver</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Kapsülün haritada bu isimle görünecek
+            </p>
 
-            <div style="display:grid; gap:12px; text-align:left;">
-                <label style="font-weight:800;">Kapsül İsmi</label>
-                <input id="capsuleTitle" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;" placeholder="Örn: 2026'ya Mesajım" type="text"/>
-
-                <label style="font-weight:800;">Açılış Tarihi</label>
-                <input id="unlockDate" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;" type="date"/>
+            <div class="form-group">
+                <label class="form-label">Kapsül İsmi</label>
+                <input type="text" class="form-input" id="capsuleTitle" placeholder='ör: "Ela\'nın İlk Adımları"' maxlength="50">
+                <div class="form-hint">Maksimum 50 karakter</div>
             </div>
 
-            <div class="actions">
-                <button class="btn" onclick="prevStep(1)">← Geri</button>
-                <button class="btn btn-primary" onclick="nextStep(3)">Devam Et →</button>
+            <div class="form-group">
+                <label class="form-label">Açılış Tarihi</label>
+                <input type="datetime-local" class="form-input" id="unlockDate">
+                <div class="form-hint">Kapsülün hangi tarihte açılacağını belirle (Türkiye saati)</div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(1)">← Geri</button>
+                <button class="btn-primary" onclick="nextStep(3)">
+                    <span>Devam Et</span>
+                    <span class="btn-arrow">→</span>
+                </button>
             </div>
         </div>
 
-        <!-- STEP 3 -->
+        <!-- Step 3: Content Preview -->
         <div class="wizard-step" id="step3">
-            <div class="step-title">Önizleme</div>
-            <div class="step-desc">Kapsül kartı görünümünü kontrol et.</div>
+            <h2>📝 İçerik Ekle</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Bu adım ödeme sonrası aktif olacak
+            </p>
 
-            <div style="max-width:420px;margin:0 auto;text-align:left;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.04);padding:14px;border-radius:16px;">
-                <div style="font-weight:900;font-size:18px;" id="previewTitle">Kapsül İsmi</div>
-                <div style="margin-top:6px;color:rgba(255,255,255,0.7);" id="previewDate">Açılış Tarihi</div>
+            <div class="capsule-preview">
+                <div class="preview-balloon">
+                    <div class="preview-balloon-content">
+                        <div class="preview-title" id="previewTitle">Kapsül İsmi</div>
+                        <div class="preview-date" id="previewDate">Açılış Tarihi</div>
+                        <div class="preview-status">🔒 Kilitli</div>
+                    </div>
+                    <div class="preview-balloon-pointer"></div>
+                    <div class="preview-balloon-pin"></div>
+                </div>
+                <p style="text-align: center; color: var(--text-secondary); margin-top: 2rem;">
+                    Kapsülün haritada böyle görünecek!
+                </p>
             </div>
 
-            <div class="actions">
-                <button class="btn" onclick="prevStep(2)">← Geri</button>
-                <button class="btn btn-primary" onclick="nextStep(4)">Ödemeye Geç →</button>
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(2)">← Geri</button>
+                <button class="btn-primary" onclick="nextStep(4)">
+                    <span>Ödemeye Geç</span>
+                    <span class="btn-arrow">→</span>
+                </button>
             </div>
         </div>
 
-        <!-- STEP 4 -->
+        <!-- Step 4: Payment -->
         <div class="wizard-step" id="step4">
-            <div class="step-title">Ödeme</div>
-            <div class="step-desc">Ödeme detaylarını kontrol et.</div>
+            <h2>💳 Ödeme</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Güvenli ödeme sayfasına yönlendirileceksin
+            </p>
 
-            <div style="text-align:left;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.04);padding:14px;border-radius:16px;display:grid;gap:8px;">
-                <div><b>Ürün:</b> Zaman Kapsülü</div>
-                <div><b>Bölge:</b> <span id="paymentZone">-</span></div>
-                <div><b>Konum:</b> <span id="paymentLocation">-</span></div>
-                <div><b>Başlık:</b> <span id="paymentTitle">-</span></div>
-                <hr style="border:none;border-top:1px solid rgba(255,255,255,0.10);"/>
-                <div style="display:flex;justify-content:space-between;"><span>Ara Toplam</span><b id="paymentPrice">₺499</b></div>
-                <div style="display:flex;justify-content:space-between;"><span>Toplam</span><b id="paymentTotal">₺499</b></div>
+            <div class="payment-summary">
+                <div class="payment-item">
+                    <span>NexusMemoir Dijital Kapsül</span>
+                    <span class="payment-price" id="paymentPrice">₺499</span>
+                </div>
+                <div class="payment-detail">
+                    <span>Zone:</span>
+                    <span id="paymentZone">-</span>
+                </div>
+                <div class="payment-detail">
+                    <span>Lokasyon:</span>
+                    <span id="paymentLocation">-</span>
+                </div>
+                <div class="payment-detail">
+                    <span>Kapsül:</span>
+                    <span id="paymentTitle">-</span>
+                </div>
+                <div class="payment-total">
+                    <span>Toplam</span>
+                    <span class="payment-total-amount" id="paymentTotal">₺499</span>
+                </div>
             </div>
 
-            <div class="actions">
-                <button class="btn" onclick="prevStep(3)">← Geri</button>
-                <button class="btn btn-primary" onclick="alert('Ödeme akışı bağlanacak')">Ödemeyi Tamamla</button>
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(3)">← Geri</button>
+                <a href="https://shopier.com/PLACEHOLDER" class="btn-primary" id="paymentButton">
+                    <span>Ödeme Yap</span>
+                    <span class="btn-arrow">→</span>
+                </a>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Dig animation overlay -->
-<div id="digAnimation">
-    <div class="dig-animation-overlay">
-        <div class="shovel">🪓</div>
-        <div class="dig-text">Gömmek için kazılıyor...</div>
-        <div class="dirt-particles">
-            <div class="dirt"></div>
-            <div class="dirt"></div>
-            <div class="dirt"></div>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <script src="/static/js/create-sync.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <script src="/static/js/create-sync.js"></script>
+</body>
+</html>
+        .create-container {
+            position: relative;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem;
+            z-index: 1;
+        }
+        
+        .wizard-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .wizard-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        
+        .wizard-subtitle {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+        }
+        
+        .wizard-progress {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+        
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+        }
+        
+        .progress-step.active {
+            opacity: 1;
+        }
+        
+        .progress-step.completed {
+            opacity: 0.7;
+        }
+        
+        .progress-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.2);
+            border: 2px solid rgba(99, 102, 241, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        
+        .progress-step.active .progress-number {
+            background: var(--gradient-primary);
+            border-color: transparent;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        }
+        
+        .progress-step.completed .progress-number {
+            background: var(--success);
+            border-color: var(--success);
+        }
+        
+        .progress-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .wizard-step {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+        
+        .wizard-step.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .map-container {
+            width: 100%;
+            height: 600px;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.2);
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .zone-info {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            min-width: 200px;
+        }
+        
+        .zone-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .zone-name {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .zone-price {
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .zone-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid white;
+        }
+        
+        .location-search {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1000;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .location-search input {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            width: 250px;
+        }
+        
+        .location-search input::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        .selected-location {
+            padding: 1.5rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+        
+        .selected-location-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .selected-location-coords {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-family: monospace;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(15, 15, 35, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .form-hint {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+        
+        .wizard-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .btn-back {
+            padding: 1rem 2rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: var(--text-primary);
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-back:hover {
+            background: rgba(99, 102, 241, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="neuralBg"></canvas>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="logo-icon" style="width: 32px; height: 32px;">
+                <span class="logo-text">NexusMemoir</span>
+            </div>
+            <div class="nav-actions">
+                <a href="/" class="btn-logout">Ana Sayfa</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="create-container">
+        <!-- Wizard Header -->
+        <div class="wizard-header">
+            <h1 class="wizard-title">Kapsülünü Oluştur</h1>
+            <p class="wizard-subtitle">4 basit adımda anılarını dünyaya göm</p>
+        </div>
+
+        <!-- Progress -->
+        <div class="wizard-progress">
+            <div class="progress-step active" data-step="1">
+                <div class="progress-number">1</div>
+                <div class="progress-label">Lokasyon</div>
+            </div>
+            <div class="progress-step" data-step="2">
+                <div class="progress-number">2</div>
+                <div class="progress-label">Bilgiler</div>
+            </div>
+            <div class="progress-step" data-step="3">
+                <div class="progress-number">3</div>
+                <div class="progress-label">İçerik</div>
+            </div>
+            <div class="progress-step" data-step="4">
+                <div class="progress-number">4</div>
+                <div class="progress-label">Ödeme</div>
+            </div>
+        </div>
+
+        <!-- Step 1: Location -->
+        <div class="wizard-step active" id="step1">
+            <h2>📍 Kapsülünü Nereye Gömmek İstersin?</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Harita üzerinde bir noktaya tıkla veya şehir adı ara
+            </p>
+            
+            <div class="map-container">
+                <div class="location-search">
+                    <span>🔍</span>
+                    <input type="text" id="locationSearch" placeholder="Şehir ara... (ör: Istanbul)">
+                </div>
+                <div class="zone-info">
+                    <div class="zone-label">Seçili Zone</div>
+                    <div class="zone-name" id="currentZoneName">Zone seç</div>
+                    <div class="zone-price" id="currentZonePrice">₺---</div>
+                    <div class="zone-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ef4444;"></div>
+                            <span>Premium - ₺1.500</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f59e0b;"></div>
+                            <span>Popular - ₺999</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #eab308;"></div>
+                            <span>Standard - ₺699</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #22c55e;"></div>
+                            <span>Basic - ₺499</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <div id="selectedLocation" class="selected-location" style="display: none;">
+                <div class="selected-location-title">Seçilen Lokasyon:</div>
+                <div id="locationName" style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">-</div>
+                <div class="selected-location-coords" id="locationCoords">-</div>
+            </div>
+
+            <div class="wizard-actions">
+                <a href="/" class="btn-back">İptal</a>
+                <button class="btn-primary" onclick="nextStep(2)" id="continueBtn" disabled>
+                    <span>Devam Et</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Info -->
+        <div class="wizard-step" id="step2">
+            <h2>✏️ Kapsülüne İsim Ver</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Kapsülün haritada bu isimle görünecek
+            </p>
+
+            <div class="form-group">
+                <label class="form-label">Kapsül İsmi</label>
+                <input type="text" class="form-input" id="capsuleTitle" placeholder='ör: "Ela\'nın İlk Adımları"' maxlength="50">
+                <div class="form-hint">Maksimum 50 karakter</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Açılış Tarihi</label>
+                <input type="datetime-local" class="form-input" id="unlockDate">
+                <div class="form-hint">Kapsülün hangi tarihte açılacağını belirle (Türkiye saati)</div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(1)">← Geri</button>
+                <button class="btn-primary" onclick="nextStep(3)">
+                    <span>Devam Et</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Content (Placeholder) -->
+        <div class="wizard-step" id="step3">
+            <h2>📝 İçerik Ekle</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Bu adım ödeme sonrası aktif olacak
+            </p>
+
+            <div style="padding: 3rem; text-align: center; background: rgba(99, 102, 241, 0.05); border-radius: 16px;">
+                <p style="font-size: 3rem; margin-bottom: 1rem;">📦</p>
+                <p style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Ödeme Sonrası</p>
+                <p style="color: var(--text-secondary);">Ödeme yaptıktan sonra metinlerini, fotoğraflarını ve videonu ekleyebilirsin</p>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(2)">← Geri</button>
+                <button class="btn-primary" onclick="nextStep(4)">
+                    <span>Ödemeye Geç</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Payment -->
+        <div class="wizard-step" id="step4">
+            <h2>💳 Ödeme</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                Güvenli ödeme sayfasına yönlendirileceksin
+            </p>
+
+            <div style="padding: 2rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 16px; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <span>NexusMemoir Dijital Kapsül</span>
+                    <span style="font-weight: 700;" id="paymentPrice">₺499</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                    <span>Zone:</span>
+                    <span id="paymentZone">-</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                    <span>Lokasyon:</span>
+                    <span id="paymentLocation">-</span>
+                </div>
+                <div style="padding-top: 1rem; border-top: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; font-size: 1.5rem; font-weight: 800;">
+                        <span>Toplam</span>
+                        <span id="paymentTotal">₺499</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="btn-back" onclick="prevStep(3)">← Geri</button>
+                <a href="https://shopier.com/PLACEHOLDER" class="btn-primary" id="paymentButton">
+                    <span>Ödeme Yap</span>
+                    <span class="btn-arrow">→</span>
+                </a>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- ✅ SCRIPTS: SADECE 1 KEZ -->
-<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-<script src="/static/js/create-sync.js"></script>
+    
+    
+    
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <script src="/static/js/create-sync.js"></script>
 </body>
 </html>
