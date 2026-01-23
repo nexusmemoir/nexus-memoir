@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusMemoir - Anılarını Dünyaya Göm</title>
+    <link rel="icon" type="image/png" href="/static/images/nexusmemoir-logo.png">
+    <link rel="stylesheet" href="/static/css/globe-landing.css">
+    <script src="//unpkg.com/globe.gl"></script>
+</head>
+<body>
+    <!-- Neural Background -->
+    <canvas id="neuralBg"></canvas>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="logo-image">
+                <span class="logo-text">NexusMemoir</span>
+            </div>
+            <div class="nav-links">
+                <a href="#explore">Keşfet</a>
+                <a href="#how-it-works">Nasıl Çalışır</a>
+                <a href="#pricing">Fiyatlar</a>
+                <a href="/map" class="btn-demo">Haritayı Gör</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Globe -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-icon">🌍</span>
+                <span>Dijital Zaman Kapsülü Devrimi</span>
+            </div>
+            <h1 class="hero-title">
+                Anılarını<br>
+                <span class="gradient-text">Dünyaya Göm</span>
+            </h1>
+            <p class="hero-subtitle">
+                3D dünya haritasında özel bir lokasyon seç. Fotoğraflarını, videolarını ve mesajlarını ekle.
+                Belirlediğin tarihte otomatik açılsın. Herkes görsün, sadece sen açabilsin.
+            </p>
+            <div class="hero-stats">
+                <div class="stat">
+                    <div class="stat-number" id="totalCapsules">127</div>
+                    <div class="stat-label">Gömülü Kapsül</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <div class="stat-number" id="countries">23</div>
+                    <div class="stat-label">Ülke</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <div class="stat-number" id="nextOpening">3g 14s</div>
+                    <div class="stat-label">Sonraki Açılış</div>
+                </div>
+            </div>
+            <div class="hero-cta">
+                <a href="/create" class="btn-primary btn-large">
+                    <span>Kapsülünü Göm</span>
+                    <span class="btn-arrow">→</span>
+                </a>
+                <a href="#explore" class="btn-secondary">
+                    <span>Haritayı Keşfet</span>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Interactive Globe -->
+        <div class="globe-container">
+            <div id="globeViz"></div>
+            <div class="globe-overlay">
+                <div class="pulse-indicator"></div>
+                <p class="globe-hint">🖱️ Sürükle & Döndür</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Explore Section -->
+    <section id="explore" class="explore-section">
+        <div class="section-header">
+            <h2 class="section-title">Dünya Çapında Anılar</h2>
+            <p class="section-subtitle">Gerçek zamanlı olarak gömülmüş kapsülleri keşfet</p>
+        </div>
+        <div class="capsule-feed">
+            <div class="feed-card">
+                <div class="feed-location">📍 İstanbul, Türkiye</div>
+                <div class="feed-title">"Ela'nın İlk Adımları"</div>
+                <div class="feed-meta">
+                    <span class="feed-status locked">🔒 Kilitli</span>
+                    <span class="feed-date">Açılış: 14 Mayıs 2028</span>
+                </div>
+                <div class="feed-countdown">844 gün kaldı</div>
+            </div>
+            <div class="feed-card">
+                <div class="feed-location">📍 Paris, Fransa</div>
+                <div class="feed-title">"Notre Amour Éternel"</div>
+                <div class="feed-meta">
+                    <span class="feed-status locked">🔒 Kilitli</span>
+                    <span class="feed-date">Açılış: 25 Aralık 2026</span>
+                </div>
+                <div class="feed-countdown">337 gün kaldı</div>
+            </div>
+            <div class="feed-card">
+                <div class="feed-location">📍 Tokyo, Japonya</div>
+                <div class="feed-title">"桜の思い出 (Sakura Anıları)"</div>
+                <div class="feed-meta">
+                    <span class="feed-status open">🎉 Açık</span>
+                    <span class="feed-date">Açıldı: 3 Ocak 2026</span>
+                </div>
+            </div>
+        </div>
+        <div class="explore-cta">
+            <a href="/map" class="btn-primary">
+                <span>Tüm Kapsülleri Gör</span>
+                <span class="btn-arrow">→</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="section-header">
+            <h2 class="section-title">3 Basit Adım</h2>
+            <p class="section-subtitle">Kendi dijital zaman kapsülünü oluştur</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-visual">
+                    <div class="step-icon">🌍</div>
+                    <div class="step-number">01</div>
+                </div>
+                <h3>Lokasyon Seç</h3>
+                <p>3D dünya haritasında özel bir yer seç. İstanbul'dan Tokyo'ya, Paris'ten New York'a...</p>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-visual">
+                    <div class="step-icon">📝</div>
+                    <div class="step-number">02</div>
+                </div>
+                <h3>İçerik Ekle</h3>
+                <p>Kapsülüne isim ver. Metinler, fotoğraflar, video yükle. Açılma tarihini belirle.</p>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-visual">
+                    <div class="step-icon">🚀</div>
+                    <div class="step-number">03</div>
+                </div>
+                <h3>Göm & Paylaş</h3>
+                <p>Kapsülün haritada görünsün! Zaman geldiğinde otomatik açılır. Herkes görür, sadece sen açabilirsin.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="features">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Zamana Kilitli</h3>
+                <p>Belirlediğin tarihe kadar kimse açamaz. Canlı countdown ile geri sayım.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3>Herkese Açık</h3>
+                <p>Kapsülün haritada görünür. İsmi, lokasyonu ve tarihi herkes görebilir.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>Sadece Senin</h3>
+                <p>İçerik sadece senin. QR + PIN ile güvenli erişim.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💎</div>
+                <h3>Ömür Boyu</h3>
+                <p>Anıların sonsuza kadar güvende. Cloudflare altyapısı ile şifrelenmiş saklama.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>Her Cihazdan</h3>
+                <p>Mobil, tablet, bilgisayar. Her yerden erişim.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎉</div>
+                <h3>Otomatik Açılış</h3>
+                <p>Tarih geldiğinde kapsül otomatik açılır. E-posta bildirimi.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="pricing">
+        <div class="section-header">
+            <h2 class="section-title">Basit Fiyatlandırma</h2>
+            <p class="section-subtitle">Tek fiyat, tüm özellikler</p>
+        </div>
+        <div class="pricing-card">
+            <div class="pricing-badge">En Popüler</div>
+            <h3>Dijital Kapsül</h3>
+            <div class="price">
+                <span class="currency">₺</span>
+                <span class="amount">499</span>
+            </div>
+            <p class="price-period">tek seferlik ödeme</p>
+            <ul class="pricing-features">
+                <li>✅ Dünya haritasında özel lokasyon</li>
+                <li>✅ Kişiye özel kapsül ismi</li>
+                <li>✅ 5 metin notu</li>
+                <li>✅ 10 fotoğraf (50MB)</li>
+                <li>✅ 1 video (80MB)</li>
+                <li>✅ Zamana kilitli açılış</li>
+                <li>✅ Canlı countdown</li>
+                <li>✅ Ömür boyu saklama</li>
+                <li>✅ Herkese görünür (içerik gizli)</li>
+                <li>✅ QR + PIN güvenlik</li>
+            </ul>
+            <a href="/create" class="btn-primary btn-large">
+                <span>Kapsülünü Oluştur</span>
+                <span class="btn-arrow">→</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="final-cta">
+        <div class="cta-content">
+            <h2>Anılarını Geleceğe Göndermeye Hazır mısın?</h2>
+            <p>Bugünün özel anlarını yarın için sakla</p>
+            <a href="/create" class="btn-primary btn-xl">
+                <span>Hemen Başla</span>
+                <span class="btn-arrow">→</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="footer-logo">
+                <p>Anılarını dünyaya göm.</p>
+            </div>
+            <div class="footer-links">
+                <div>
+                    <h4>Ürün</h4>
+                    <a href="#explore">Keşfet</a>
+                    <a href="#how-it-works">Nasıl Çalışır</a>
+                    <a href="#pricing">Fiyatlar</a>
+                </div>
+                <div>
+                    <h4>Destek</h4>
+                    <a href="#">SSS</a>
+                    <a href="#">İletişim</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 NexusMemoir. Dijital zaman kapsülleri.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/neural-bg.js"></script>
+    <script src="/static/js/globe-hero.js"></script>
+</body>
+</html>
