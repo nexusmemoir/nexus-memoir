@@ -160,7 +160,7 @@
         window.nextStep(stepNumber);
     };
 
-    // Mock Payment - Direct API Call
+    // Mock Payment - Direct API Call with Burial Animation
     window.completePurchase = async function() {
         const title = document.getElementById('capsuleTitle').value;
         const unlockDate = document.getElementById('unlockDate').value;
@@ -172,9 +172,22 @@
         
         const button = event.target;
         button.disabled = true;
-        button.textContent = 'İşleniyor...';
+        button.textContent = 'Ödeme işleniyor...';
         
         try {
+            // Simulate payment processing (2 seconds)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Show burial animation
+            button.textContent = 'Kapsül gömülüyor...';
+            const overlay = document.getElementById('digAnimation');
+            if (overlay) {
+                overlay.style.display = 'flex';
+                // Update animation text
+                const digText = overlay.querySelector('.dig-text');
+                if (digText) digText.textContent = 'Anı kapsülünüz gömülüyor...';
+            }
+            
             // Create FormData
             const formData = new FormData();
             formData.append('lat', selectedLat);
@@ -191,15 +204,29 @@
             const data = await response.json();
             
             if (data.success) {
+                // Update animation text to success
+                if (overlay) {
+                    const digText = overlay.querySelector('.dig-text');
+                    if (digText) digText.textContent = '✅ Kapsül başarıyla gömüldü!';
+                    const shovel = overlay.querySelector('.shovel');
+                    if (shovel) shovel.textContent = '🎉';
+                }
+                
+                // Wait for animation then redirect
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
                 // Redirect to success page
                 window.location.href = `/success?token=${encodeURIComponent(data.token)}&pin=${encodeURIComponent(data.pin)}&qr=${encodeURIComponent(data.qr_code)}`;
             } else {
+                if (overlay) overlay.style.display = 'none';
                 alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
                 button.disabled = false;
                 button.textContent = 'Ödemeyi Tamamla';
             }
         } catch (error) {
             console.error('Error:', error);
+            const overlay = document.getElementById('digAnimation');
+            if (overlay) overlay.style.display = 'none';
             alert('Bağlantı hatası');
             button.disabled = false;
             button.textContent = 'Ödemeyi Tamamla';

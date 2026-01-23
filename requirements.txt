@@ -7,4 +7,3 @@ boto3
 botocore
 python-dotenv
 qrcode[pil]
-qrcode[pil]
