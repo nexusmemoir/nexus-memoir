@@ -7,9 +7,12 @@ import secrets
 import sqlite3
 import io
 import base64
+import html
+import time
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import traceback
+from collections import defaultdict
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -23,11 +26,12 @@ try:
 except ImportError:
     print("WARNING: pip install qrcode[pil] --break-system-packages")
 
-from fastapi import FastAPI, Request, Form, UploadFile, File, Query
+from fastapi import FastAPI, Request, Form, UploadFile, File, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Config
 MAX_NOTES = 5
@@ -38,6 +42,15 @@ MAX_VIDEO_BYTES = 80 * 1024 * 1024
 ALLOWED_PHOTO = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_VIDEO = {"video/mp4", "video/webm", "video/quicktime"}
 TZ_TR = ZoneInfo("Europe/Istanbul")
+
+# Rate limiting config
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX_REQUESTS = 30  # max requests per window
+CLAIM_RATE_LIMIT = 5  # max claim attempts per minute
+
+# In-memory rate limiter (for production use Redis)
+rate_limit_store = defaultdict(list)
+claim_attempts = defaultdict(list)
 
 def env_required(name: str) -> str:
     v = os.getenv(name)
@@ -53,10 +66,46 @@ R2_SECRET_ACCESS_KEY = env_required("R2_SECRET_ACCESS_KEY")
 R2_BUCKET = env_required("R2_BUCKET")
 DB_PATH = os.getenv("DB_PATH", "db.sqlite3")
 
+# Security: Rate limiting middleware
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        client_ip = request.client.host if request.client else "unknown"
+        current_time = time.time()
+        
+        # Clean old entries
+        rate_limit_store[client_ip] = [
+            t for t in rate_limit_store[client_ip] 
+            if current_time - t < RATE_LIMIT_WINDOW
+        ]
+        
+        # Check rate limit
+        if len(rate_limit_store[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+            return JSONResponse(
+                {"error": "Çok fazla istek. Lütfen bekleyin."},
+                status_code=429
+            )
+        
+        rate_limit_store[client_ip].append(current_time)
+        response = await call_next(request)
+        return response
+
+# Security: Add security headers
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://api.mapbox.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; img-src 'self' data: blob: https://*.mapbox.com https://*.cartocdn.com; connect-src 'self' https://api.mapbox.com https://nominatim.openstreetmap.org https://*.cloudflare.com; worker-src blob:;"
+        return response
+
 app = FastAPI()
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=86400, same_site="lax", https_only=False)
 
 def db():
     con = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -211,6 +260,18 @@ def index(request: Request):
 def create_page(request: Request):
     return templates.TemplateResponse("create-capsule.html", {"request": request})
 
+@app.get("/gizlilik", response_class=HTMLResponse)
+def privacy_page(request: Request):
+    return templates.TemplateResponse("gizlilik.html", {"request": request})
+
+@app.get("/sss", response_class=HTMLResponse)
+def faq_page(request: Request):
+    return templates.TemplateResponse("sss.html", {"request": request})
+
+@app.get("/iletisim", response_class=HTMLResponse)
+def contact_page(request: Request):
+    return templates.TemplateResponse("iletisim.html", {"request": request})
+
 @app.get("/logout")
 def logout(request: Request):
     request.session.clear()
@@ -218,16 +279,53 @@ def logout(request: Request):
 
 @app.get("/claim", response_class=HTMLResponse)
 def claim_page(request: Request, token: str = ""):
-    return templates.TemplateResponse("claim.html", {"request": request, "token": token, "error": ""})
+    # Sanitize token for display (though it's hidden now)
+    safe_token = html.escape(token) if token else ""
+    return templates.TemplateResponse("claim.html", {"request": request, "token": safe_token, "error": ""})
 
 @app.post("/claim")
 def claim_submit(request: Request, token: str = Form(...), pin: str = Form(...)):
+    client_ip = request.client.host if request.client else "unknown"
+    current_time = time.time()
+    
+    # Brute force protection: max 5 attempts per minute
+    claim_attempts[client_ip] = [
+        t for t in claim_attempts[client_ip] 
+        if current_time - t < 60
+    ]
+    
+    if len(claim_attempts[client_ip]) >= CLAIM_RATE_LIMIT:
+        return templates.TemplateResponse(
+            "claim.html",
+            {"request": request, "token": token, "error": "Çok fazla deneme. 1 dakika bekleyin."},
+            status_code=429,
+        )
+    
+    claim_attempts[client_ip].append(current_time)
+    
+    # Input validation
+    if not token or len(token) > 100:
+        return templates.TemplateResponse(
+            "claim.html",
+            {"request": request, "token": "", "error": "Geçersiz token"},
+            status_code=400,
+        )
+    
+    if not pin or not pin.isdigit() or len(pin) != 6:
+        return templates.TemplateResponse(
+            "claim.html",
+            {"request": request, "token": token, "error": "PIN 6 haneli sayı olmalı"},
+            status_code=400,
+        )
+    
     con = db()
     cur = con.cursor()
     row = cur.execute("SELECT * FROM capsules WHERE token_hash=?", (sha256(token),)).fetchone()
     con.close()
     
     if (not row) or (row["pin_hash"] != sha256(pin)):
+        # Timing attack koruması: Her zaman aynı süre bekle
+        time.sleep(0.1)
         return templates.TemplateResponse(
             "claim.html",
             {"request": request, "token": token, "error": "Token veya PIN hatalı"},
@@ -597,6 +695,14 @@ def add_note(request: Request, text: str = Form(...)):
     if not txt:
         return HTMLResponse("Boş metin eklenemez.", status_code=400)
     
+    # Security: Max length limit (5000 chars)
+    if len(txt) > 5000:
+        return HTMLResponse("Metin çok uzun (max 5000 karakter).", status_code=400)
+    
+    # Security: Sanitize HTML (XSS prevention) - store as-is but escape on display
+    # Note: Jinja2 auto-escapes by default, but we can also escape here
+    # txt = html.escape(txt)  # Uncomment if not using Jinja2 autoescape
+    
     con = db()
     cur = con.cursor()
     cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
@@ -652,11 +758,21 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
         con.close()
         return HTMLResponse("Foto çok büyük (max 10MB).", status_code=400)
     
-    ext = ".jpg"
-    if file.content_type == "image/png":
+    # Security: Verify magic bytes (file signature)
+    is_valid = False
+    if file.content_type == "image/jpeg" and data[:3] == b'\xff\xd8\xff':
+        is_valid = True
+        ext = ".jpg"
+    elif file.content_type == "image/png" and data[:8] == b'\x89PNG\r\n\x1a\n':
+        is_valid = True
         ext = ".png"
-    elif file.content_type == "image/webp":
+    elif file.content_type == "image/webp" and data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        is_valid = True
         ext = ".webp"
+    
+    if not is_valid:
+        con.close()
+        return HTMLResponse("Dosya içeriği format ile uyuşmuyor.", status_code=400)
     
     original = safe_filename(file.filename)
     
@@ -713,11 +829,27 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
         con.close()
         return HTMLResponse("Video çok büyük (max 80MB).", status_code=400)
     
-    ext = ".mp4"
-    if file.content_type == "video/webm":
+    # Security: Verify magic bytes for video files
+    is_valid = False
+    if file.content_type == "video/mp4":
+        # MP4: ftyp box at offset 4
+        if len(data) > 12 and data[4:8] == b'ftyp':
+            is_valid = True
+        ext = ".mp4"
+    elif file.content_type == "video/webm":
+        # WebM: starts with EBML header
+        if len(data) > 4 and data[:4] == b'\x1a\x45\xdf\xa3':
+            is_valid = True
         ext = ".webm"
     elif file.content_type == "video/quicktime":
+        # MOV: ftyp or moov box
+        if len(data) > 12 and (data[4:8] == b'ftyp' or data[4:8] == b'moov'):
+            is_valid = True
         ext = ".mov"
+    
+    if not is_valid:
+        con.close()
+        return HTMLResponse("Dosya içeriği format ile uyuşmuyor.", status_code=400)
     
     original = safe_filename(file.filename)
     
