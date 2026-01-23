@@ -97,7 +97,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://api.mapbox.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; img-src 'self' data: blob: https://*.mapbox.com https://*.cartocdn.com; connect-src 'self' https://api.mapbox.com https://nominatim.openstreetmap.org https://*.cloudflare.com; worker-src blob:;"
+        # CSP - Allow Mapbox and required resources
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.mapbox.com https://cdnjs.cloudflare.com blob:; "
+            "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: blob: https://*.mapbox.com https://*.cartocdn.com https://*.openstreetmap.org; "
+            "connect-src 'self' https://api.mapbox.com https://*.mapbox.com https://events.mapbox.com https://nominatim.openstreetmap.org https://*.cloudflare.com; "
+            "worker-src 'self' blob:; "
+            "child-src 'self' blob:;"
+        )
         return response
 
 app = FastAPI()
