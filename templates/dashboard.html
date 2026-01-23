@@ -211,7 +211,7 @@
 
     <div class="dashboard-container">
         
-        {% if capsule.status == 'draft' or capsule.status is none %}
+        {% if capsule.status == 'draft' or capsule.status is none or not capsule.status %}
         <!-- DRAFT MODE: Content upload + Payment -->
         
         <div class="draft-banner">

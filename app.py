@@ -119,7 +119,7 @@ def init_db():
             print(f"[MIGRATION] Skip {table}.{column}: {e}")
     
     # Add new columns to capsules
-    add_column_if_missing("capsules", "capsule_number", "capsule_number TEXT UNIQUE")
+    add_column_if_missing("capsules", "capsule_number", "capsule_number TEXT")  # No UNIQUE - will add index later
     add_column_if_missing("capsules", "lat", "lat REAL")
     add_column_if_missing("capsules", "lng", "lng REAL")
     add_column_if_missing("capsules", "location_name", "location_name TEXT")
@@ -127,6 +127,12 @@ def init_db():
     add_column_if_missing("capsules", "is_public", "is_public INTEGER DEFAULT 0")  # Default 0 - not visible until paid
     add_column_if_missing("capsules", "status", "status TEXT DEFAULT 'draft'")  # draft, locked, paid
     add_column_if_missing("capsules", "created_at", "created_at TEXT")
+    
+    # Try to create unique index on capsule_number (may fail if duplicates exist)
+    try:
+        cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_capsule_number ON capsules(capsule_number) WHERE capsule_number IS NOT NULL")
+    except Exception as e:
+        print(f"[MIGRATION] Index creation skipped: {e}")
     
     cur.execute("""
     CREATE TABLE IF NOT EXISTS notes (
@@ -266,8 +272,12 @@ def generate_capsule_number(cur) -> str:
     """Generate a unique 6-digit capsule number"""
     for _ in range(100):  # Max 100 attempts
         num = f"{secrets.randbelow(900000) + 100000}"  # 100000-999999
-        existing = cur.execute("SELECT id FROM capsules WHERE capsule_number=?", (num,)).fetchone()
-        if not existing:
+        try:
+            existing = cur.execute("SELECT id FROM capsules WHERE capsule_number=?", (num,)).fetchone()
+            if not existing:
+                return num
+        except Exception:
+            # Column might not exist yet, just return the number
             return num
     raise RuntimeError("Could not generate unique capsule number")
 
@@ -298,13 +308,27 @@ async def api_create_draft_capsule(
         con = db()
         cur = con.cursor()
         
-        # Generate unique 6-digit capsule number
-        capsule_number = generate_capsule_number(cur)
+        # Check if capsule_number column exists
+        cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
+        has_capsule_number = "capsule_number" in cols
+        has_status = "status" in cols
+        has_created_at = "created_at" in cols
         
-        cur.execute("""
-            INSERT INTO capsules(capsule_number, token_hash, pin_hash, unlock_at, lat, lng, location_name, capsule_title, is_public, status, created_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)
-        """, (capsule_number, token_hash, pin_hash, dt_utc.isoformat(), lat, lng, location_name, title, 0, 'draft', now_utc_iso()))
+        # Generate unique 6-digit capsule number
+        capsule_number = generate_capsule_number(cur) if has_capsule_number else str(secrets.randbelow(900000) + 100000)
+        
+        # Build dynamic INSERT based on available columns
+        if has_capsule_number and has_status and has_created_at:
+            cur.execute("""
+                INSERT INTO capsules(capsule_number, token_hash, pin_hash, unlock_at, lat, lng, location_name, capsule_title, is_public, status, created_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
+            """, (capsule_number, token_hash, pin_hash, dt_utc.isoformat(), lat, lng, location_name, title, 0, 'draft', now_utc_iso()))
+        else:
+            # Fallback for old schema
+            cur.execute("""
+                INSERT INTO capsules(token_hash, pin_hash, unlock_at, lat, lng, location_name, capsule_title, is_public)
+                VALUES(?,?,?,?,?,?,?,?)
+            """, (token_hash, pin_hash, dt_utc.isoformat(), lat, lng, location_name, title, 0))
         
         capsule_id = cur.lastrowid
         con.commit()
@@ -338,12 +362,18 @@ async def api_pay_and_lock(request: Request):
         con = db()
         cur = con.cursor()
         
+        # Check which columns exist
+        cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
+        has_status = "status" in cols
+        has_capsule_number = "capsule_number" in cols
+        
         cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
         if not cap:
             con.close()
             return JSONResponse({"success": False, "error": "Kapsül bulunamadı"}, status_code=404)
         
-        if cap["status"] == "paid":
+        # Check if already paid (if status column exists)
+        if has_status and cap["status"] == "paid":
             con.close()
             return JSONResponse({"success": False, "error": "Kapsül zaten ödenmiş"}, status_code=400)
         
@@ -351,23 +381,23 @@ async def api_pay_and_lock(request: Request):
         # For now, simulate successful payment
         
         # Update capsule: mark as paid and make public
-        cur.execute("""
-            UPDATE capsules 
-            SET status='paid', is_public=1 
-            WHERE id=?
-        """, (capsule_id,))
+        if has_status:
+            cur.execute("""
+                UPDATE capsules 
+                SET status='paid', is_public=1 
+                WHERE id=?
+            """, (capsule_id,))
+        else:
+            cur.execute("""
+                UPDATE capsules 
+                SET is_public=1 
+                WHERE id=?
+            """, (capsule_id,))
         
         con.commit()
         
-        # Get token for QR code generation
-        # Note: We need to get the original token from somewhere
-        # Since we only store hash, we'll generate QR with claim URL pattern
-        capsule_number = cap["capsule_number"]
-        
-        # Generate QR code for claim page
-        base_url = str(request.base_url).rstrip('/')
-        # We can't recover token from hash, so QR will show capsule info page
-        # User already has token from draft creation
+        # Get capsule number (if exists)
+        capsule_number = cap["capsule_number"] if has_capsule_number else str(capsule_id)
         
         con.close()
         
@@ -393,12 +423,17 @@ async def api_delete_draft(request: Request):
         con = db()
         cur = con.cursor()
         
+        # Check which columns exist
+        cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
+        has_status = "status" in cols
+        
         cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
         if not cap:
             con.close()
             return JSONResponse({"success": False, "error": "Kapsül bulunamadı"}, status_code=404)
         
-        if cap["status"] == "paid":
+        # Check if paid (if status column exists)
+        if has_status and cap["status"] == "paid":
             con.close()
             return JSONResponse({"success": False, "error": "Ödenmiş kapsül silinemez"}, status_code=400)
         
@@ -447,12 +482,26 @@ def api_get_public_capsules():
         con = db()
         cur = con.cursor()
         
-        # Only show paid capsules that are public
-        capsules = cur.execute("""
-            SELECT id, capsule_number, lat, lng, capsule_title, unlock_at, location_name 
-            FROM capsules 
-            WHERE is_public=1 AND status='paid' AND lat IS NOT NULL AND lng IS NOT NULL
-        """).fetchall()
+        # Check which columns exist
+        cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
+        has_status = "status" in cols
+        has_capsule_number = "capsule_number" in cols
+        
+        # Build query based on available columns
+        if has_status:
+            # New schema - only show paid capsules
+            capsules = cur.execute("""
+                SELECT id, lat, lng, capsule_title, unlock_at, location_name 
+                FROM capsules 
+                WHERE is_public=1 AND status='paid' AND lat IS NOT NULL AND lng IS NOT NULL
+            """).fetchall()
+        else:
+            # Old schema - show all public capsules
+            capsules = cur.execute("""
+                SELECT id, lat, lng, capsule_title, unlock_at, location_name 
+                FROM capsules 
+                WHERE is_public=1 AND lat IS NOT NULL AND lng IS NOT NULL
+            """).fetchall()
         
         con.close()
         
@@ -461,8 +510,9 @@ def api_get_public_capsules():
             unlock_dt = parse_iso(cap["unlock_at"])
             is_open_flag = is_open(cap["unlock_at"])
             
-            # Mask title
-            title_masked = cap["capsule_title"][:20] + "..." if len(cap["capsule_title"]) > 20 else cap["capsule_title"]
+            # Handle None title
+            cap_title = cap["capsule_title"] or "İsimsiz Kapsül"
+            title_masked = cap_title[:20] + "..." if len(cap_title) > 20 else cap_title
             
             result.append({
                 "id": cap["id"],
