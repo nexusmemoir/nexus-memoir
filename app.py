@@ -659,7 +659,13 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
         ext = ".webp"
     
     original = safe_filename(file.filename)
-    key = f"capsules/{capsule_id}/photos/{secrets.token_urlsafe(16)}{ext}"
+    
+    # Use capsule_number for R2 path (fallback to capsule_id if not available)
+    try:
+        folder_id = cap["capsule_number"] if cap["capsule_number"] else str(capsule_id)
+    except (KeyError, IndexError):
+        folder_id = str(capsule_id)
+    key = f"capsules/{folder_id}/photos/{secrets.token_urlsafe(16)}{ext}"
     
     try:
         r2_put_bytes(key=key, data=data, content_type=file.content_type)
@@ -714,7 +720,13 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
         ext = ".mov"
     
     original = safe_filename(file.filename)
-    key = f"capsules/{capsule_id}/videos/{secrets.token_urlsafe(16)}{ext}"
+    
+    # Use capsule_number for R2 path (fallback to capsule_id if not available)
+    try:
+        folder_id = cap["capsule_number"] if cap["capsule_number"] else str(capsule_id)
+    except (KeyError, IndexError):
+        folder_id = str(capsule_id)
+    key = f"capsules/{folder_id}/videos/{secrets.token_urlsafe(16)}{ext}"
     
     try:
         r2_put_bytes(key=key, data=data, content_type=file.content_type)

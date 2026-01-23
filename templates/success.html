@@ -198,17 +198,16 @@
         {% endif %}
         
         <div class="credentials">
-            <h3 style="margin-top: 0;">Giriş Bilgileriniz</h3>
+            <h3 style="margin-top: 0;">🔐 Giriş Bilgileriniz</h3>
             
             <div class="cred-item">
-                <div class="cred-label">Token</div>
-                <div class="cred-value">{{ token }}</div>
+                <div class="cred-label">PIN Kodunuz</div>
+                <div class="cred-value" style="font-size: 2rem; text-align: center; letter-spacing: 8px;">{{ pin }}</div>
             </div>
             
-            <div class="cred-item">
-                <div class="cred-label">PIN</div>
-                <div class="cred-value">{{ pin }}</div>
-            </div>
+            <p style="font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-top: 1rem;">
+                Kapsülünüze erişmek için QR kodu okutun ve PIN kodunu girin.
+            </p>
         </div>
         
         <div class="warning">
