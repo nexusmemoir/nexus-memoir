@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonuçlar - ClaimCheck</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">
+                <span class="logo-icon">🔍</span>
+                <span class="logo-text">ClaimCheck</span>
+            </a>
+            <nav class="nav">
+                <a href="/" class="btn-new-search">+ Yeni Arama</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="result-page">
+        <div class="container">
+            
+            <!-- Claim Display -->
+            <div class="claim-box">
+                <div class="claim-label">Aranan İddia</div>
+                <h1 id="normalizedClaim" class="claim-text">Yükleniyor...</h1>
+            </div>
+
+            <!-- Summary -->
+            <section class="summary-section">
+                <h2>📋 Özet</h2>
+                <div id="summaryText" class="summary-content">
+                    Yükleniyor...
+                </div>
+                <div id="notesSection" class="notes-box" style="display: none;">
+                    <strong>📝 Notlar:</strong>
+                    <ul id="notesList"></ul>
+                </div>
+            </section>
+
+            <!-- Timeline -->
+            <section class="timeline-section">
+                <h2>📅 Zaman Çizelgesi</h2>
+                <div id="timelineContainer" class="timeline">
+                    <p class="empty-state">Zaman çizelgesi oluşturulamadı.</p>
+                </div>
+            </section>
+
+            <!-- Ad Space -->
+            <div class="ad-placeholder ad-inline">
+                <span>Reklam Alanı</span>
+            </div>
+
+            <!-- Sources Tabs -->
+            <section class="sources-section">
+                <div class="tabs">
+                    <button class="tab active" data-tab="news">
+                        📰 Haberler <span id="newsCount" class="count">0</span>
+                    </button>
+                    <button class="tab" data-tab="scholar">
+                        📚 Akademik <span id="scholarCount" class="count">0</span>
+                    </button>
+                </div>
+
+                <!-- News Results -->
+                <div id="newsTab" class="tab-content active">
+                    <div id="newsResults" class="sources-grid">
+                        <p class="empty-state">Haber bulunamadı.</p>
+                    </div>
+                </div>
+
+                <!-- Scholar Results -->
+                <div id="scholarTab" class="tab-content">
+                    <div id="scholarResults" class="sources-grid">
+                        <p class="empty-state">Akademik kaynak bulunamadı.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Keywords -->
+            <section class="keywords-section">
+                <h3>🏷️ Anahtar Kelimeler</h3>
+                <div id="keywordsList" class="keywords-list">
+                    <!-- Keywords will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Disclaimer -->
+            <div class="disclaimer result-disclaimer">
+                <p>
+                    <strong>⚠️ Önemli:</strong> Bu araç doğruluk hükmü vermez. 
+                    Yalnızca çevrimiçi kaynaklarda iz sürer. 
+                    Kaynaklar üçüncü taraf sitelerdir.
+                </p>
+            </div>
+
+            <!-- New Search -->
+            <div class="new-search-box">
+                <a href="/" class="btn-search">🔍 Yeni Arama Yap</a>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 ClaimCheck - Kaynak Sorgulama Aracı</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const resultData = sessionStorage.getItem('claimResult');
+            
+            if (!resultData) {
+                window.location.href = '/';
+                return;
+            }
+
+            const data = JSON.parse(resultData);
+            renderResults(data);
+        });
+
+        function renderResults(data) {
+            // Normalized Claim
+            document.getElementById('normalizedClaim').textContent = 
+                data.normalized_claim || sessionStorage.getItem('originalClaim') || 'İddia';
+
+            // Summary
+            document.getElementById('summaryText').textContent = 
+                data.summary || 'Özet oluşturulamadı.';
+
+            // Notes
+            if (data.notes && data.notes.length > 0) {
+                const notesSection = document.getElementById('notesSection');
+                const notesList = document.getElementById('notesList');
+                notesSection.style.display = 'block';
+                data.notes.forEach(note => {
+                    const li = document.createElement('li');
+                    li.textContent = note;
+                    notesList.appendChild(li);
+                });
+            }
+
+            // Timeline
+            renderTimeline(data.timeline || [], data.news_results || []);
+
+            // News Results
+            const newsResults = data.news_results || [];
+            document.getElementById('newsCount').textContent = newsResults.length;
+            renderNews(newsResults);
+
+            // Scholar Results
+            const scholarResults = data.scholar_results || [];
+            document.getElementById('scholarCount').textContent = scholarResults.length;
+            renderScholar(scholarResults);
+
+            // Keywords
+            renderKeywords(data.keywords || []);
+
+            // Setup tabs
+            setupTabs();
+        }
+
+        function renderTimeline(timeline, sources) {
+            const container = document.getElementById('timelineContainer');
+            
+            if (!timeline || timeline.length === 0) {
+                container.innerHTML = '<p class="empty-state">Zaman çizelgesi oluşturulamadı.</p>';
+                return;
+            }
+
+            let html = '';
+            timeline.forEach((item, index) => {
+                const refs = item.refs || [];
+                const refLinks = refs.map(refIdx => {
+                    const source = sources[refIdx];
+                    if (source) {
+                        return `<a href="${source.url}" target="_blank" rel="noopener" class="ref-link">[${refIdx + 1}]</a>`;
+                    }
+                    return '';
+                }).join(' ');
+
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">${item.date || 'Tarih belirsiz'}</div>
+                            <div class="timeline-event">${item.event || ''}</div>
+                            <div class="timeline-refs">${refLinks}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderNews(results) {
+            const container = document.getElementById('newsResults');
+            
+            if (!results || results.length === 0) {
+                container.innerHTML = '<p class="empty-state">Haber bulunamadı.</p>';
+                return;
+            }
+
+            let html = '';
+            results.forEach((item, index) => {
+                const date = item.date ? formatDate(item.date) : 'Tarih yok';
+                html += `
+                    <a href="${item.url}" target="_blank" rel="noopener" class="source-card">
+                        <div class="source-index">${index + 1}</div>
+                        <div class="source-content">
+                            <h4 class="source-title">${escapeHtml(item.title || 'Başlıksız')}</h4>
+                            <div class="source-meta">
+                                <span class="source-publisher">${escapeHtml(item.source || 'Bilinmeyen')}</span>
+                                <span class="source-date">${date}</span>
+                            </div>
+                        </div>
+                        <div class="source-arrow">→</div>
+                    </a>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderScholar(results) {
+            const container = document.getElementById('scholarResults');
+            
+            if (!results || results.length === 0) {
+                container.innerHTML = '<p class="empty-state">Akademik kaynak bulunamadı.</p>';
+                return;
+            }
+
+            let html = '';
+            results.forEach((item, index) => {
+                html += `
+                    <a href="${item.url}" target="_blank" rel="noopener" class="source-card scholar">
+                        <div class="source-index">${index + 1}</div>
+                        <div class="source-content">
+                            <h4 class="source-title">${escapeHtml(item.title || 'Başlıksız')}</h4>
+                            <div class="source-meta">
+                                <span class="source-authors">${escapeHtml(item.authors || '')}</span>
+                                <span class="source-year">${item.year || ''}</span>
+                            </div>
+                            ${item.venue ? `<div class="source-venue">${escapeHtml(item.venue)}</div>` : ''}
+                            ${item.citations ? `<div class="source-citations">📊 ${item.citations} alıntı</div>` : ''}
+                        </div>
+                        <div class="source-arrow">→</div>
+                    </a>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderKeywords(keywords) {
+            const container = document.getElementById('keywordsList');
+            
+            if (!keywords || keywords.length === 0) {
+                container.innerHTML = '<span class="empty-state">-</span>';
+                return;
+            }
+
+            let html = '';
+            keywords.forEach(kw => {
+                html += `<span class="keyword-tag">${escapeHtml(kw)}</span>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active from all
+                    tabs.forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active to clicked
+                    tab.classList.add('active');
+                    const tabName = tab.dataset.tab;
+                    document.getElementById(tabName + 'Tab').classList.add('active');
+                });
+            });
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('tr-TR', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+            } catch {
+                return dateStr;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
