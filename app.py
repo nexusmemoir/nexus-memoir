@@ -66,6 +66,11 @@ R2_SECRET_ACCESS_KEY = env_required("R2_SECRET_ACCESS_KEY")
 R2_BUCKET = env_required("R2_BUCKET")
 DB_PATH = os.getenv("DB_PATH", "db.sqlite3")
 
+# Shopier (optional)
+SHOPIER_API_KEY = os.getenv("SHOPIER_API_KEY", "")
+SHOPIER_API_SECRET = os.getenv("SHOPIER_API_SECRET", "")
+SHOPIER_ENABLED = bool(SHOPIER_API_KEY and SHOPIER_API_SECRET)
+
 # Security: Rate limiting middleware
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -97,17 +102,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        # CSP - Allow Mapbox and required resources
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.mapbox.com https://cdnjs.cloudflare.com blob:; "
-            "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com; "
-            "img-src 'self' data: blob: https://*.mapbox.com https://*.cartocdn.com https://*.openstreetmap.org; "
-            "connect-src 'self' https://api.mapbox.com https://*.mapbox.com https://events.mapbox.com https://nominatim.openstreetmap.org https://*.cloudflare.com; "
-            "worker-src 'self' blob:; "
-            "child-src 'self' blob:;"
-        )
+        # CSP temporarily disabled for Mapbox compatibility
+        # TODO: Re-enable with proper Mapbox domains after testing
         return response
 
 app = FastAPI()
@@ -213,6 +209,39 @@ def init_db():
         content_type TEXT,
         size_bytes INTEGER,
         created_at TEXT,
+        FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+    )
+    """)
+    
+    # Orders table - stores order info for physical letter (PIN/Token in plain text for printing)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        capsule_id INTEGER NOT NULL,
+        capsule_number TEXT,
+        order_number TEXT UNIQUE,
+        
+        -- Plain text for mektup printing (only stored after payment)
+        token_plain TEXT,
+        pin_plain TEXT,
+        
+        -- Customer info for shipping
+        customer_name TEXT,
+        customer_email TEXT,
+        customer_phone TEXT,
+        shipping_address TEXT,
+        
+        -- Payment info
+        amount INTEGER,
+        payment_status TEXT DEFAULT 'pending',
+        payment_provider TEXT,
+        payment_id TEXT,
+        
+        -- Timestamps
+        created_at TEXT,
+        paid_at TEXT,
+        shipped_at TEXT,
+        
         FOREIGN KEY(capsule_id) REFERENCES capsules(id)
     )
     """)
@@ -593,18 +622,15 @@ def api_get_public_capsules():
         # Check which columns exist
         cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
         has_status = "status" in cols
-        has_capsule_number = "capsule_number" in cols
         
-        # Build query based on available columns
+        # Build query - show capsules that are public AND (paid OR status is NULL for old capsules)
         if has_status:
-            # New schema - only show paid capsules
             capsules = cur.execute("""
                 SELECT id, lat, lng, capsule_title, unlock_at, location_name 
                 FROM capsules 
-                WHERE is_public=1 AND status='paid' AND lat IS NOT NULL AND lng IS NOT NULL
+                WHERE is_public=1 AND (status='paid' OR status IS NULL) AND lat IS NOT NULL AND lng IS NOT NULL
             """).fetchall()
         else:
-            # Old schema - show all public capsules
             capsules = cur.execute("""
                 SELECT id, lat, lng, capsule_title, unlock_at, location_name 
                 FROM capsules 
@@ -635,6 +661,7 @@ def api_get_public_capsules():
         return JSONResponse({"capsules": result})
     except Exception as e:
         print(f"Error: {e}")
+        traceback.print_exc()
         return JSONResponse({"capsules": []})
 
 @app.get("/success")

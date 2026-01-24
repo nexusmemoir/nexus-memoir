@@ -1,5 +1,5 @@
 // Map Landing - Real Capsules from API (Fixed hover bug)
-mapboxgl.accessToken = 'pk.eyJ1IjoibmV4dXNtZW1vaXIiLCJhIjoiY21rb2sycXN4MDhnMTNjc2FxYWtxaXY1byJ9.PEZQ7jJ02OJZ0ndCVEcc8g';
+mapboxgl.accessToken = 'pk.eyJ1IjoibmV4dXNtZW1vaXIiLCJhIjoiY21rczVsbnpiMTZuejNjcXk4M2Q4c2Z4bSJ9.Itm0AFzYPjurF_IBe_GNpQ';
 
 let map;
 
