@@ -3,12 +3,14 @@
 import os
 import re
 import hashlib
+import hmac
 import secrets
 import sqlite3
 import io
 import base64
 import html
 import time
+import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import traceback
@@ -70,6 +72,9 @@ DB_PATH = os.getenv("DB_PATH", "db.sqlite3")
 SHOPIER_API_KEY = os.getenv("SHOPIER_API_KEY", "")
 SHOPIER_API_SECRET = os.getenv("SHOPIER_API_SECRET", "")
 SHOPIER_ENABLED = bool(SHOPIER_API_KEY and SHOPIER_API_SECRET)
+
+# Shopify
+SHOPIFY_WEBHOOK_SECRET = os.getenv("SHOPIFY_WEBHOOK_SECRET", "752a72fad80823e98b9a82dd92f1878b21ae6149eebe39d73d2b93b72d3e920b")
 
 # Security: Rate limiting middleware
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -938,3 +943,183 @@ def open_media(request: Request, media_id: int):
     
     url = r2_presigned_get(m["r2_key"], expires_sec=600)
     return RedirectResponse(url=url, status_code=302)
+
+
+# ========================
+# SHOPIFY WEBHOOK
+# ========================
+
+def verify_shopify_webhook(data: bytes, hmac_header: str) -> bool:
+    """Verify webhook is from Shopify"""
+    calculated = hmac.new(
+        SHOPIFY_WEBHOOK_SECRET.encode('utf-8'),
+        data,
+        hashlib.sha256
+    ).digest()
+    calculated_b64 = base64.b64encode(calculated).decode('utf-8')
+    return hmac.compare_digest(calculated_b64, hmac_header)
+
+@app.post("/api/shopify/webhook")
+async def shopify_webhook(request: Request):
+    """Handle Shopify order webhook"""
+    try:
+        # Get raw body
+        body = await request.body()
+        
+        # Verify webhook signature
+        hmac_header = request.headers.get("X-Shopify-Hmac-Sha256", "")
+        if not verify_shopify_webhook(body, hmac_header):
+            print("[SHOPIFY] Invalid webhook signature")
+            return JSONResponse({"error": "Invalid signature"}, status_code=401)
+        
+        # Parse order data
+        data = json.loads(body)
+        
+        order_id = data.get("id")
+        order_number = data.get("order_number")
+        email = data.get("email", "")
+        phone = data.get("phone", "")
+        note = data.get("note", "")  # Kapsül numarası buradan gelecek
+        total_price = data.get("total_price", "0")
+        
+        # Shipping info
+        shipping = data.get("shipping_address", {})
+        customer_name = f"{shipping.get('first_name', '')} {shipping.get('last_name', '')}".strip()
+        shipping_address = f"{shipping.get('address1', '')}, {shipping.get('city', '')} {shipping.get('zip', '')}"
+        
+        # Extract capsule number from note
+        capsule_number = None
+        if note:
+            # Try to find 6-digit number in note
+            import re
+            match = re.search(r'\b(\d{6})\b', note)
+            if match:
+                capsule_number = match.group(1)
+        
+        print(f"[SHOPIFY] Order received: #{order_number}, Note: {note}, Capsule: {capsule_number}")
+        
+        # Save to database
+        con = db()
+        cur = con.cursor()
+        
+        # Find capsule if capsule_number provided
+        capsule_id = None
+        if capsule_number:
+            cap = cur.execute("SELECT id FROM capsules WHERE capsule_number=?", (capsule_number,)).fetchone()
+            if cap:
+                capsule_id = cap["id"]
+        
+        # Insert order
+        cur.execute("""
+            INSERT INTO orders (
+                capsule_id, capsule_number, order_number,
+                customer_name, customer_email, customer_phone, shipping_address,
+                amount, payment_status, payment_provider, payment_id,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            capsule_id, capsule_number, str(order_number),
+            customer_name, email, phone, shipping_address,
+            int(float(total_price)), "paid", "shopify", str(order_id),
+            now_utc_iso()
+        ))
+        
+        con.commit()
+        con.close()
+        
+        return JSONResponse({"success": True})
+        
+    except Exception as e:
+        print(f"[SHOPIFY] Webhook error: {e}")
+        traceback.print_exc()
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ========================
+# ADMIN - ORDERS PAGE
+# ========================
+
+@app.get("/admin/orders", response_class=HTMLResponse)
+def admin_orders(request: Request, p: str = Query(default="")):
+    if p != ADMIN_PASSWORD:
+        return HTMLResponse("Yetkisiz. Kullanım: /admin/orders?p=ADMIN_PASSWORD", status_code=403)
+    
+    con = db()
+    cur = con.cursor()
+    
+    # Get all orders
+    orders = cur.execute("""
+        SELECT o.*, c.capsule_title, c.token_hash, c.pin_hash
+        FROM orders o
+        LEFT JOIN capsules c ON o.capsule_id = c.id
+        ORDER BY o.created_at DESC
+    """).fetchall()
+    
+    con.close()
+    
+    return templates.TemplateResponse("admin-orders.html", {
+        "request": request,
+        "orders": orders,
+        "p": p
+    })
+
+@app.post("/admin/orders/approve/{order_id}")
+def admin_approve_order(request: Request, order_id: int, p: str = Form(...)):
+    if p != ADMIN_PASSWORD:
+        return HTMLResponse("Yetkisiz", status_code=403)
+    
+    con = db()
+    cur = con.cursor()
+    
+    # Get order
+    order = cur.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not order:
+        con.close()
+        return HTMLResponse("Sipariş bulunamadı", status_code=404)
+    
+    # If capsule linked, activate it
+    if order["capsule_id"]:
+        cur.execute("""
+            UPDATE capsules 
+            SET status='paid', is_public=1 
+            WHERE id=?
+        """, (order["capsule_id"],))
+    
+    # Update order status
+    cur.execute("""
+        UPDATE orders 
+        SET payment_status='approved', paid_at=?
+        WHERE id=?
+    """, (now_utc_iso(), order_id))
+    
+    con.commit()
+    con.close()
+    
+    return RedirectResponse(url=f"/admin/orders?p={p}", status_code=303)
+
+@app.post("/admin/orders/link/{order_id}")
+def admin_link_order(request: Request, order_id: int, p: str = Form(...), capsule_number: str = Form(...)):
+    """Manually link order to capsule"""
+    if p != ADMIN_PASSWORD:
+        return HTMLResponse("Yetkisiz", status_code=403)
+    
+    con = db()
+    cur = con.cursor()
+    
+    # Find capsule
+    cap = cur.execute("SELECT id FROM capsules WHERE capsule_number=?", (capsule_number,)).fetchone()
+    if not cap:
+        con.close()
+        return HTMLResponse(f"Kapsül bulunamadı: {capsule_number}", status_code=404)
+    
+    # Update order
+    cur.execute("""
+        UPDATE orders 
+        SET capsule_id=?, capsule_number=?
+        WHERE id=?
+    """, (cap["id"], capsule_number, order_id))
+    
+    con.commit()
+    con.close()
+    
+    return RedirectResponse(url=f"/admin/orders?p={p}", status_code=303)

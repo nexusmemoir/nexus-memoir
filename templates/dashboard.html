@@ -383,18 +383,227 @@
                 <li>Haritada sonsuza dek görünür</li>
                 <li>Belirlediğin tarihte açılır</li>
                 <li>QR kod ve PIN ile erişim</li>
-                <li>Tüm içerikler güvenle saklanır</li>
+                <li>Özel tasarım fiziksel mektup</li>
             </ul>
             
-            <button class="btn-payment" onclick="processPayment()">
-                <span>💳</span>
-                <span>Ödemeyi Tamamla ve Göm</span>
-            </button>
+            <!-- Kapsül Numarası Uyarısı -->
+            <div class="capsule-note-warning">
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-text">
+                    <strong>ÖNEMLİ:</strong> Ödeme yaparken <strong>"Sipariş notu"</strong> kısmına kapsül numaranızı yazın:
+                </div>
+                <div class="capsule-number-box">{{ capsule.capsule_number or capsule.id }}</div>
+                <button class="copy-btn" onclick="copyToClipboard('{{ capsule.capsule_number or capsule.id }}')">📋 Kopyala</button>
+            </div>
+            
+            <!-- Shopify Buy Button -->
+            <div id="shopify-buy-button-container">
+                <div id='product-component-1769276386158'></div>
+            </div>
             
             <p style="margin-top: 15px; font-size: 0.85rem; color: rgba(255,255,255,0.4);">
-                Ödeme sonrası kapsülünüz haritada görünecek ve QR kodunuz oluşturulacak
+                📬 Ödeme sonrası fiziksel mektubunuz adresinize gönderilecek
             </p>
         </div>
+        
+        <style>
+            .capsule-note-warning {
+                background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.1));
+                border: 2px solid rgba(255, 193, 7, 0.5);
+                border-radius: 16px;
+                padding: 20px;
+                margin: 24px 0;
+                text-align: center;
+            }
+            
+            .warning-icon {
+                font-size: 2rem;
+                margin-bottom: 12px;
+            }
+            
+            .warning-text {
+                color: rgba(255,255,255,0.9);
+                margin-bottom: 16px;
+                font-size: 1rem;
+            }
+            
+            .capsule-number-box {
+                font-size: 2.5rem;
+                font-weight: 800;
+                color: #ffa94d;
+                letter-spacing: 8px;
+                font-family: monospace;
+                background: rgba(0,0,0,0.3);
+                padding: 16px 32px;
+                border-radius: 12px;
+                display: inline-block;
+                margin: 12px 0;
+            }
+            
+            .copy-btn {
+                display: inline-block;
+                margin-top: 12px;
+                padding: 10px 20px;
+                background: rgba(255, 193, 7, 0.2);
+                border: 1px solid rgba(255, 193, 7, 0.5);
+                border-radius: 8px;
+                color: #ffc107;
+                cursor: pointer;
+                font-size: 0.95rem;
+                transition: all 0.3s;
+            }
+            
+            .copy-btn:hover {
+                background: rgba(255, 193, 7, 0.3);
+            }
+            
+            #shopify-buy-button-container {
+                margin-top: 24px;
+            }
+            
+            /* Shopify button override */
+            #shopify-buy-button-container iframe {
+                max-width: 100% !important;
+            }
+        </style>
+        
+        <script type="text/javascript">
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = '✅ Kopyalandı!';
+                setTimeout(() => {
+                    btn.textContent = '📋 Kopyala';
+                }, 2000);
+            });
+        }
+        
+        /*<![CDATA[*/
+        (function () {
+          var scriptURL = 'https://sdks.shopifycdn.com/buy-button/latest/buy-button-storefront.min.js';
+          if (window.ShopifyBuy) {
+            if (window.ShopifyBuy.UI) {
+              ShopifyBuyInit();
+            } else {
+              loadScript();
+            }
+          } else {
+            loadScript();
+          }
+          function loadScript() {
+            var script = document.createElement('script');
+            script.async = true;
+            script.src = scriptURL;
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(script);
+            script.onload = ShopifyBuyInit;
+          }
+          function ShopifyBuyInit() {
+            var client = ShopifyBuy.buildClient({
+              domain: 'pach81-h2.myshopify.com',
+              storefrontAccessToken: '8be4a0f930c8fa896c49e47c20337b5c',
+            });
+            ShopifyBuy.UI.onReady(client).then(function (ui) {
+              ui.createComponent('product', {
+                id: '8722575818930',
+                node: document.getElementById('product-component-1769276386158'),
+                moneyFormat: '%7B%7Bamount%7D%7DTL',
+                options: {
+                  "product": {
+                    "styles": {
+                      "product": {
+                        "@media (min-width: 601px)": {
+                          "max-width": "100%",
+                          "margin-left": "0",
+                          "margin-bottom": "0"
+                        }
+                      },
+                      "button": {
+                        "font-family": "Inter, sans-serif",
+                        "font-size": "18px",
+                        "padding-top": "18px",
+                        "padding-bottom": "18px",
+                        "border-radius": "12px",
+                        ":hover": {
+                          "background-color": "#059669"
+                        },
+                        "background-color": "#10b981",
+                        ":focus": {
+                          "background-color": "#059669"
+                        }
+                      },
+                      "title": {
+                        "display": "none"
+                      },
+                      "price": {
+                        "display": "none"
+                      },
+                      "compareAt": {
+                        "display": "none"
+                      },
+                      "description": {
+                        "display": "none"
+                      }
+                    },
+                    "text": {
+                      "button": "💳 Ödemeyi Tamamla"
+                    },
+                    "googleFonts": [
+                      "Inter"
+                    ]
+                  },
+                  "cart": {
+                    "styles": {
+                      "button": {
+                        "font-family": "Inter, sans-serif",
+                        "font-size": "16px",
+                        "padding-top": "16px",
+                        "padding-bottom": "16px",
+                        "border-radius": "12px",
+                        ":hover": {
+                          "background-color": "#059669"
+                        },
+                        "background-color": "#10b981",
+                        ":focus": {
+                          "background-color": "#059669"
+                        }
+                      }
+                    },
+                    "text": {
+                      "total": "Toplam",
+                      "button": "Ödemeye Geç",
+                      "noteDescription": "Sipariş notu (Kapsül numaranızı buraya yazın)"
+                    },
+                    "contents": {
+                      "note": true
+                    },
+                    "googleFonts": [
+                      "Inter"
+                    ]
+                  },
+                  "toggle": {
+                    "styles": {
+                      "toggle": {
+                        "font-family": "Inter, sans-serif",
+                        "background-color": "#10b981",
+                        ":hover": {
+                          "background-color": "#059669"
+                        },
+                        ":focus": {
+                          "background-color": "#059669"
+                        }
+                      }
+                    },
+                    "googleFonts": [
+                      "Inter"
+                    ]
+                  }
+                },
+              });
+            });
+          }
+        })();
+        /*]]>*/
+        </script>
         
         {% else %}
         <!-- PAID MODE: Countdown or Open -->
