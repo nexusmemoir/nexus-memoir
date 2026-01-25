@@ -21,7 +21,7 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.sessions import SessionMiddleware
+# SessionMiddleware kaldırıldı - şu an kullanılmıyor
 
 # ========================
 # CONFIG
@@ -48,7 +48,7 @@ rate_limits = defaultdict(list)
 app = FastAPI(title="AkademikSoru", description="Bilimsel Literatür Araştırma")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+# SessionMiddleware kaldırıldı - şu an session kullanılmıyor
 
 # ========================
 # HELPERS
