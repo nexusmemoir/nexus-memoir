@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""AkademikSoru FAZ 3.1 - Claude API + Gelişmiş Araştırma"""
+"""AkademikSoru FAZ 3.1 - GPT-5-mini + Gelişmiş Araştırma - DÜZELTİLMİŞ"""
 
 import os, re, json, hashlib, secrets, asyncio
 from datetime import datetime, timezone
@@ -93,35 +93,35 @@ def detect_category(q: str) -> str:
     if any(w in q for w in ["eğitim", "öğrenme"]): return "Eğitim"
     return "Sağlık"
 
-async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-mini") -> str:
+async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
     """
-    GPT-5-mini için Responses API kullanan yeni çekirdek çağrı fonksiyonu.
-    app.py yapısını bozmadan sadece motoru değiştirir.
+    GPT-5-mini için Responses API - DÜZELTİLMİŞ
     """
     if not OPENAI_API_KEY:
+        print("[GPT] ❌ API Key yok!")
         return ""
 
-    async with httpx.AsyncClient(timeout=90.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         try:
-            # Son mesajı al (senin kodunda hep user prompt burada)
-            user_message = messages[-1]["content"]
-
             payload = {
-                "model": model,
+                "model": "gpt-5-mini",
                 "input": [
                     {
                         "role": "user",
                         "content": [
                             {
                                 "type": "input_text",
-                                "text": user_message
+                                "text": prompt
                             }
                         ]
                     }
                 ],
-                "max_output_tokens": max_tokens
+                "max_output_tokens": max_tokens,
+                "temperature": 0.3
             }
 
+            print(f"[GPT] 📤 İstek gönderiliyor... (max_tokens: {max_tokens})")
+            
             response = await client.post(
                 "https://api.openai.com/v1/responses",
                 headers={
@@ -132,7 +132,7 @@ async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-m
             )
 
             if response.status_code != 200:
-                print(f"GPT-5 API Error {response.status_code}: {response.text}")
+                print(f"[GPT] ❌ API Error {response.status_code}: {response.text[:200]}")
                 return ""
 
             data = response.json()
@@ -142,17 +142,26 @@ async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-m
             for item in data.get("output", []):
                 for content in item.get("content", []):
                     if content.get("type") == "output_text":
-                        output_texts.append(content.get("text", ""))
+                        text = content.get("text", "")
+                        if text:
+                            output_texts.append(text)
 
-            return "\n".join(output_texts).strip()
+            result = "\n".join(output_texts).strip()
+            
+            if not result:
+                print("[GPT] ⚠️ Boş yanıt!")
+                return ""
+            
+            print(f"[GPT] ✅ Yanıt alındı ({len(result)} karakter)")
+            return result
 
         except Exception as e:
-            print(f"GPT-5 Error: {e}")
+            print(f"[GPT] ❌ Exception: {str(e)[:200]}")
             return ""
 
 
 async def generate_search_queries(question: str) -> list:
-    """Gelişmiş sorgu üretimi - Claude ile çok daha iyi"""
+    """Gelişmiş sorgu üretimi - GPT-5-mini ile"""
     prompt = f'''Türkçe Soru: "{question}"
 
 SEN BİR AKADEMİK ARAŞTIRMA UZMANISIM. Bu soruyu ANLAMSAL olarak analiz et ve Semantic Scholar'da bu soruyu yanıtlayacak makaleleri bulmak için AKILLI İngilizce sorgular oluştur.
@@ -166,109 +175,117 @@ STRATEJİ:
 
 KURALLAR:
 - Kelime kelime çeviri YAPMA, ANLAMI çevir
-- Akademik terminoloji kullan (effects, impact, meta-analysis, systematic review, clinical trial, randomized controlled trial, longitudinal study, vb)
+- Akademik terminoloji kullan
 - Her sorgu NET ve ARAMAYI DARALTACAK şekilde olmalı
-- Çok genel ("health") veya çok dar olma
-- Bilimsel veri tabanlarında gerçekten kullanılan terimleri kullan
 
 ÖRNEK:
 Soru: "Kahve içmek kalbe zararlı mı?"
-Sorgular:
-1. "coffee consumption cardiovascular health" (Geniş)
-2. "coffee intake heart disease risk" (Spesifik)
-3. "coffee cardiovascular effects meta-analysis" (Metodolojik)
-4. "caffeine cardiac health outcomes" (Alternatif terim)
-5. "dietary caffeine cardiovascular disease" (İlgili alan)
-
-ŞİMDİ YUKARIDAKI SORU İÇİN 5 sorgu üret.
-
-JSON formatında yanıt ver:
+Çıktı:
+```json
 {{
-    "queries": ["sorgu1", "sorgu2", "sorgu3", "sorgu4", "sorgu5"],
-    "main_keywords": ["keyword1", "keyword2", "keyword3"],
-    "research_field": "Ana araştırma alanı",
-    "reasoning": "Neden bu sorguları seçtin - kısaca"
-}}'''
+    "queries": [
+        "coffee consumption cardiovascular health",
+        "coffee intake heart disease risk",
+        "coffee cardiovascular effects meta-analysis",
+        "caffeine cardiac health outcomes",
+        "dietary caffeine cardiovascular disease"
+    ]
+}}
+```
+
+ŞİMDİ YUKARIDAKİ SORU İÇİN SADECE JSON çıktısı ver (başka hiçbir şey yazma):'''
     
-    result = await call_gpt([{"role": "user", "content": prompt}], 800, model="gpt-5-mini")
+    result = await call_gpt(prompt, 500)
+    
+    if not result:
+        print("[SORGU] ❌ GPT yanıt vermedi, fallback kullanılıyor")
+        return generate_fallback_queries(question)
+    
     try:
-        # JSON çıkar
-        m = re.search(r'\{.*\}', result, re.DOTALL)
+        # JSON çıkar (markdown backtick'leri temizle)
+        clean = result.replace("```json", "").replace("```", "").strip()
+        m = re.search(r'\{.*\}', clean, re.DOTALL)
         if m: 
             data = json.loads(m.group())
             queries = data.get("queries", [])[:5]
-            # Boş veya çok kısa sorguları filtrele
             queries = [q.strip() for q in queries if len(q.strip()) > 5]
             
             if len(queries) >= 3:
-                print(f"[SORGU ÜRETİMİ] {len(queries)} akıllı sorgu oluşturuldu")
-                print(f"[SORGU] {queries}")
+                print(f"[SORGU] ✅ {len(queries)} sorgu üretildi: {queries}")
                 return queries
     except Exception as e:
-        print(f"Sorgu üretim hatası: {e}")
+        print(f"[SORGU] ⚠️ Parse hatası: {e}")
     
-    # Fallback: Manuel akıllı sorgular
+    print("[SORGU] ⚠️ Fallback kullanılıyor")
+    return generate_fallback_queries(question)
+
+def generate_fallback_queries(question: str) -> list:
+    """Manuel akıllı sorgular - GPT başarısız olursa"""
     q_lower = question.lower()
-    fallback_queries = []
     
-    # Ana kelimeler
     if "kahve" in q_lower: 
-        fallback_queries = ["coffee consumption health effects", "caffeine cardiovascular impact", "coffee intake disease risk"]
+        return ["coffee consumption health effects", "caffeine cardiovascular impact", "coffee intake disease risk", "coffee health meta-analysis", "caffeine health outcomes"]
     elif "uyku" in q_lower:
-        fallback_queries = ["sleep duration health outcomes", "sleep deprivation effects", "optimal sleep recommendations"]
+        return ["sleep duration health outcomes", "sleep deprivation effects", "optimal sleep recommendations", "sleep health meta-analysis", "sleep quality health"]
     elif "meditasyon" in q_lower or "mindfulness" in q_lower:
-        fallback_queries = ["meditation stress reduction", "mindfulness mental health", "meditation brain effects"]
+        return ["meditation stress reduction", "mindfulness mental health", "meditation brain effects", "mindfulness intervention", "meditation health benefits"]
     elif "vitamin" in q_lower:
-        fallback_queries = ["vitamin supplementation health", "micronutrient deficiency effects", "vitamin intake recommendations"]
+        return ["vitamin supplementation health", "micronutrient deficiency effects", "vitamin intake recommendations", "vitamin supplementation meta-analysis", "vitamin health outcomes"]
+    elif "spor" in q_lower or "egzersiz" in q_lower:
+        return ["exercise health benefits", "physical activity health outcomes", "exercise disease prevention", "physical activity recommendations", "exercise health meta-analysis"]
     else:
-        # Genel fallback
-        fallback_queries = [question, f"{question} research study", f"{question} health effects"]
-    
-    print(f"[SORGU ÜRETİMİ] Fallback kullanıldı: {fallback_queries}")
-    return fallback_queries[:5]
+        base = question.replace("?", "").replace("mı", "").replace("mi", "").strip()
+        return [f"{base} health effects", f"{base} research study", f"{base} meta-analysis", f"{base} systematic review", f"{base} health outcomes"]
 
 async def check_paper_relevance(question: str, paper: dict) -> dict:
-    """Claude ile alakalılık kontrolü - çok daha doğru"""
+    """GPT-5-mini ile alakalılık kontrolü"""
     title = paper.get("title", "")
     abstract = paper.get("abstract", "") or ""
     
-    # Abstract yoksa veya çok kısa ise düşük skor
     if not abstract or len(abstract) < 50:
-        return {"score": 25, "reason": "Özet eksik veya çok kısa"}
+        return {"score": 20, "reason": "Özet eksik"}
     
-    # GPT-4o ile anlamsal relevance check
     prompt = f'''SORU: "{question}"
 
 MAKALE:
 Başlık: {title}
-Özet: {abstract[:600]}
+Özet: {abstract[:800]}
 
-GÖREV: Bu makale yukarıdaki soruyu yanıtlamak için NE KADAR ALAKALI?
+GÖREV: Bu makale soruyu yanıtlamak için NE KADAR ALAKALI?
 
-SKORLAMA KRİTERLERİ:
-- 0-20: Tamamen alakasız, soruyla hiç ilgisi yok
-- 21-40: Uzaktan ilgili, soruyu dolaylı yoldan ilgilendirebilir
-- 41-60: Kısmen alakalı, sorunun bazı yönlerini ele alıyor
-- 61-80: Alakalı, soruyu doğrudan veya yakından ele alıyor
-- 81-100: Çok alakalı, tam olarak bu soruyu araştırıyor
+SKORLAMA:
+- 0-20: Tamamen alakasız
+- 21-40: Uzaktan ilgili
+- 41-60: Kısmen alakalı
+- 61-80: Alakalı
+- 81-100: Çok alakalı
 
-ÖNEMLİ: Çok katı ol. Sadece gerçekten alakalı makalelere yüksek skor ver.
-
-JSON formatında SADECE şu çıktıyı ver:
-{{"score": 0-100, "reason": "Kısa açıklama (max 20 kelime)"}}'''
+SADECE JSON çıktısı ver (başka hiçbir şey yazma):
+```json
+{{"score": 0-100, "reason": "Kısa açıklama"}}
+```'''
     
-    result = await call_gpt([{"role": "user", "content": prompt}], 200, model="gpt-5-mini")
+    result = await call_gpt(prompt, 150)
+    
+    if not result:
+        return simple_relevance_check(question, title, abstract)
+    
     try:
-        m = re.search(r'\{.*\}', result, re.DOTALL)
+        clean = result.replace("```json", "").replace("```", "").strip()
+        m = re.search(r'\{.*\}', clean, re.DOTALL)
         if m:
             data = json.loads(m.group())
             score = int(data.get("score", 50))
             reason = data.get("reason", "")
+            print(f"[RELEVANCE] Skor: {score} - {title[:40]}")
             return {"score": score, "reason": reason}
-    except:
-        pass
+    except Exception as e:
+        print(f"[RELEVANCE] Parse hatası: {e}")
     
-    # Basit fallback
+    return simple_relevance_check(question, title, abstract)
+
+def simple_relevance_check(question: str, title: str, abstract: str) -> dict:
+    """Basit keyword tabanlı check - fallback"""
     q_words = set(question.lower().split())
     title_words = set(title.lower().split())
     abstract_words = set(abstract.lower().split())
@@ -276,13 +293,14 @@ JSON formatında SADECE şu çıktıyı ver:
     title_match = len(q_words & title_words) / max(len(q_words), 1)
     abstract_match = len(q_words & abstract_words) / max(len(q_words), 1)
     
-    simple_score = int((title_match * 60 + abstract_match * 40) * 100)
-    return {"score": simple_score, "reason": "Keyword eşleşmesi"}
+    score = int((title_match * 60 + abstract_match * 40) * 100)
+    return {"score": score, "reason": "Keyword match (fallback)"}
 
-async def search_semantic_scholar(query: str, limit: int = 20) -> list:
-    """Semantic Scholar arama - limit artırıldı"""
+async def search_semantic_scholar(query: str, limit: int = 25) -> list:
+    """Semantic Scholar arama"""
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
+            print(f"[SS] Arama: '{query}'")
             r = await client.get(
                 f"{SEMANTIC_SCHOLAR_API}/paper/search",
                 params={
@@ -292,20 +310,27 @@ async def search_semantic_scholar(query: str, limit: int = 20) -> list:
                 }
             )
             if r.status_code == 200:
-                return r.json().get("data", [])
+                data = r.json().get("data", [])
+                print(f"[SS] ✅ {len(data)} makale bulundu")
+                return data
+            else:
+                print(f"[SS] ❌ Hata: {r.status_code}")
         except Exception as e:
-            print(f"Semantic Scholar Error: {e}")
+            print(f"[SS] ❌ Exception: {e}")
     return []
 
 async def search_papers(question: str) -> list:
-    """Gelişmiş makale arama - DAHA FAZLA MAKALE"""
-    # 1. Akıllı sorgular üret (5 sorgu)
-    queries = await generate_search_queries(question)
-    print(f"\n[ARAŞTIRMA] 🔍 {len(queries)} akıllı sorgu üretildi")
+    """Gelişmiş makale arama"""
+    print(f"\n{'='*80}")
+    print(f"[ARAŞTIRMA] Soru: {question}")
+    print(f"{'='*80}\n")
     
-    # 2. Her sorgudan 20'şer makale al (toplam ~100 makale potansiyel)
+    # 1. Sorgular üret
+    queries = await generate_search_queries(question)
+    
+    # 2. Makaleleri topla
     all_papers, seen_ids = [], set()
-    results = await asyncio.gather(*[search_semantic_scholar(q, 20) for q in queries])
+    results = await asyncio.gather(*[search_semantic_scholar(q, 25) for q in queries])
     
     for papers in results:
         for p in papers:
@@ -314,202 +339,222 @@ async def search_papers(question: str) -> list:
                 seen_ids.add(paper_id)
                 all_papers.append(p)
     
-    print(f"[ARAŞTIRMA] 📚 Toplam {len(all_papers)} benzersiz makale bulundu")
+    print(f"\n[ARAŞTIRMA] 📚 Toplam {len(all_papers)} makale bulundu")
     
     if len(all_papers) == 0:
+        print("[ARAŞTIRMA] ❌ HİÇ MAKALE YOK!")
         return []
     
-    # 3. İlk 50 makaleyi relevance kontrolünden geçir (daha fazla kontrol)
-    papers_to_check = all_papers[:50]
-    print(f"[ARAŞTIRMA] 🎯 {len(papers_to_check)} makale alakalılık kontrolünden geçiriliyor...")
+    # 3. Relevance check (ilk 30 makale)
+    papers_to_check = all_papers[:30]
+    print(f"\n[ARAŞTIRMA] 🎯 {len(papers_to_check)} makale kontrol ediliyor...\n")
     
-    # Batch olarak kontrol et (performans için 10'ar 10'ar)
     relevance_scores = []
     for i in range(0, len(papers_to_check), 10):
         batch = papers_to_check[i:i+10]
+        print(f"[ARAŞTIRMA] Batch {i//10 + 1} işleniyor...")
         batch_checks = await asyncio.gather(*[check_paper_relevance(question, p) for p in batch])
         relevance_scores.extend(batch_checks)
     
-    # Skorları ekle
     for i, check in enumerate(relevance_scores):
         papers_to_check[i]["relevance_score"] = check.get("score", 50)
         papers_to_check[i]["relevance_reason"] = check.get("reason", "")
     
-    # 4. Alakalı makaleleri filtrele (skor >= 35, daha az strict)
+    # 4. Filtrele (skor >= 35)
     filtered_papers = [p for p in papers_to_check if p.get("relevance_score", 0) >= 35]
-    print(f"[ARAŞTIRMA] ✅ {len(filtered_papers)} alakalı makale bulundu (skor >= 35)")
+    print(f"\n[ARAŞTIRMA] ✅ {len(filtered_papers)} alakalı makale (skor >= 35)")
     
     if len(filtered_papers) == 0:
-        # Hiç alakalı makale yoksa threshold'u düşür
         print(f"[ARAŞTIRMA] ⚠️ Threshold düşürülüyor...")
         filtered_papers = [p for p in papers_to_check if p.get("relevance_score", 0) >= 25]
-        print(f"[ARAŞTIRMA] 📌 {len(filtered_papers)} makale bulundu (skor >= 25)")
+        print(f"[ARAŞTIRMA] 📌 {len(filtered_papers)} makale (skor >= 25)")
     
-    # 5. Akıllı sıralama: Relevance + Citation + Recency
+    if len(filtered_papers) == 0:
+        print("[ARAŞTIRMA] ❌ ALAKALI MAKALE YOK!")
+        return []
+    
+    # 5. Sıralama
     for p in filtered_papers:
         rel_score = p.get("relevance_score", 0)
         citations = p.get("citationCount", 0)
         year = p.get("year", 2000)
         
-        # Recency bonus (son 5 yıl)
         current_year = datetime.now().year
         recency_bonus = max(0, 10 - (current_year - year)) if year >= 2020 else 0
-        
-        # Kombine skor: %60 relevance, %30 citations, %10 recency
-        normalized_citations = min(citations / 50, 30)  # Max 30 puan
+        normalized_citations = min(citations / 50, 30)
         combined_score = (rel_score * 0.6) + normalized_citations + recency_bonus
         
         p["combined_score"] = combined_score
     
     filtered_papers.sort(key=lambda x: x.get("combined_score", 0), reverse=True)
     
-    # En iyi 25 makaleyi döndür (önceden 15'ti)
-    return filtered_papers[:25]
+    final = filtered_papers[:20]
+    print(f"\n[ARAŞTIRMA] 🎖️ En iyi {len(final)} makale seçildi\n")
+    
+    return final
 
 async def synthesize_results(question: str, papers: list, level: str = "medium") -> dict:
-    """GPT-4o ile sentez - Maliyet optimize edildi"""
+    """GPT-5-mini ile sentez"""
     levels = {
-        "simple": "10 yaşındaki bir çocuğa anlatır gibi, ÇOK BASİT dil kullan. Teknik terim kullanma.", 
-        "medium": "Lise mezunu bir yetişkine anlatır gibi, ANLAŞILIR dil kullan. Gerekirse basit terimlerle açıkla.", 
+        "simple": "10 yaşındaki bir çocuğa anlatır gibi, ÇOK BASİT dil kullan.", 
+        "medium": "Lise mezunu bir yetişkine anlatır gibi, ANLAŞİLİR dil kullan.", 
         "academic": "Üniversite öğrencisine anlatır gibi, DETAYLI ve teknik terimlerle açıkla."
     }
     
-    # En alakalı 12 makaleyi kullan (önceden 8'di)
-    relevant_papers = sorted(
-        papers, 
-        key=lambda x: x.get("relevance_score", x.get("citationCount", 0) / 10),
-        reverse=True
-    )[:12]
+    if not papers:
+        return {
+            "summary": "Bu konu hakkında yeterli akademik kaynak bulunamadı.",
+            "evidence_strength": "insufficient",
+            "evidence_description": "Alakalı makale yok.",
+            "key_points": [],
+            "limitations": "Yeterli veri yok",
+            "related_questions": []
+        }
+    
+    relevant_papers = sorted(papers, key=lambda x: x.get("combined_score", 0), reverse=True)[:12]
+    
+    print(f"\n[SENTEZ] 📝 {len(relevant_papers)} makale ile sentez yapılıyor...")
     
     papers_text = "\n\n".join([
         f"""MAKALE {i}:
 Başlık: {p.get('title', '?')}
-Yıl: {p.get('year', '?')} | Atıf Sayısı: {p.get('citationCount', 0)} | Alakalılık Skoru: {p.get('relevance_score', 'N/A')}
-Özet: {(p.get('abstract') or 'Özet yok')[:500]}"""
+Yıl: {p.get('year', '?')} | Atıf: {p.get('citationCount', 0)} | Skor: {p.get('relevance_score', 'N/A')}
+Özet: {(p.get('abstract') or 'Özet yok')[:600]}"""
         for i, p in enumerate(relevant_papers, 1)
     ])
     
-    prompt = f'''ARAŞTIRILAN TÜRKÇE SORU: "{question}"
+    prompt = f'''SORU: "{question}"
 
-BULUNAN AKADEMİK MAKALELER (En alakalı 12 tanesi):
+MAKALELER:
 {papers_text}
 
-SENİN GÖREVİN:
-Bu akademik makaleleri analiz edip soruyu TÜRKÇE olarak yanıtla.
+GÖREV: Bu makaleleri analiz edip soruyu TÜRKÇE yanıtla.
 
-ÖNEMLİ KURALLAR:
-1. Makaleler İngilizce ama sen TAMAMEN TÜRKÇE yaz
-2. SADECE gerçekten soruyla alakalı makaleleri kullan
-3. Eğer makaleler soruyu yanıtlamıyorsa, açıkça belirt
-4. Çelişkili bulgular varsa, bunları göster
-5. Kanıt gücünü makalelerin sayısı, kalitesi ve tutarlılığına göre belirle
-6. Numaralandırma, madde işareti KULLANMA - düz paragraf halinde yaz
+KURALLAR:
+1. Makaleler İngilizce ama TAMAMEN TÜRKÇE yaz
+2. SADECE alakalı makaleleri kullan
+3. Çelişkiler varsa göster
+4. Madde işareti KULLANMA - düz paragraf yaz
+5. Türkçe karakterler düzgün (ç, ğ, ı, ö, ş, ü)
 
-AÇIKLAMA SEVİYESİ: {levels.get(level, levels["medium"])}
+AÇIKLAMA: {levels.get(level, levels["medium"])}
 
-KANIT GÜCÜ BELİRLEME:
-- "strong": 5+ yüksek kaliteli çalışma, tutarlı bulgular, meta-analiz var
-- "moderate": 3-5 çalışma, çoğunlukla tutarlı, bazı çelişkiler olabilir
-- "limited": 1-2 çalışma veya çelişkili bulgular
-- "insufficient": Alakalı çalışma yok veya yetersiz veri
+KANIT GÜCÜ:
+- strong: 5+ kaliteli çalışma, tutarlı
+- moderate: 3-5 çalışma, çoğunlukla tutarlı
+- limited: 1-2 çalışma veya çelişkili
+- insufficient: Yetersiz veri
 
-JSON formatında yanıt ver (Türkçe karakterler düzgün kullan):
+SADECE JSON çıktısı ver:
+```json
 {{
-    "summary": "3-4 paragraf TÜRKÇE özet. Makalelerden çıkan sonuçları ANLAŞILIR şekilde açıkla. Madde işareti kullanma, düz paragraf yaz.",
+    "summary": "3-4 paragraf TÜRKÇE özet. Düz paragraf, madde yok.",
     "evidence_strength": "strong/moderate/limited/insufficient",
-    "evidence_description": "Kanıt gücü açıklaması - kaç çalışma var, ne kadar tutarlılar, hangi metodolojiler kullanılmış?",
-    "key_points": ["Ana nokta 1 - paragraf gibi yaz", "Ana nokta 2 - paragraf gibi yaz", "Ana nokta 3"],
-    "limitations": "Araştırmanın sınırlılıkları - neyi bilmiyoruz, hangi sorular hala açık?",
-    "related_questions": ["İlgili soru 1", "İlgili soru 2", "İlgili soru 3"]
-}}'''
+    "evidence_description": "Kanıt gücü açıklaması",
+    "key_points": ["Nokta 1", "Nokta 2", "Nokta 3"],
+    "limitations": "Sınırlılıklar - neyi bilmiyoruz?",
+    "related_questions": ["Soru 1", "Soru 2", "Soru 3"]
+}}
+```'''
     
-    result = await call_gpt([{"role": "user", "content": prompt}], 4096, model="gpt-5-mini")
+    result = await call_gpt(prompt, 3000)
+    
+    if not result:
+        print("[SENTEZ] ❌ GPT yanıt vermedi!")
+        return {
+            "summary": "Sentez yapılamadı.",
+            "evidence_strength": "insufficient",
+            "evidence_description": "GPT hatası.",
+            "key_points": [],
+            "limitations": "Teknik hata",
+            "related_questions": []
+        }
+    
     try:
-        m = re.search(r'\{.*\}', result, re.DOTALL)
+        clean = result.replace("```json", "").replace("```", "").strip()
+        m = re.search(r'\{.*\}', clean, re.DOTALL)
         if m: 
             data = json.loads(m.group())
             
-            # Validation
             summary = data.get("summary", "")
             if not summary or len(summary) < 100:
-                data["summary"] = "Bulunan makaleler soruyu doğrudan yanıtlamıyor. Daha spesifik bir soru sormanız veya farklı anahtar kelimeler kullanmanız önerilir."
+                print("[SENTEZ] ⚠️ Özet çok kısa")
+                data["summary"] = "Bulunan makaleler soruyu doğrudan yanıtlamıyor."
                 data["evidence_strength"] = "insufficient"
+            else:
+                print(f"[SENTEZ] ✅ Başarılı! ({len(summary)} karakter)")
             
             return data
     except Exception as e:
-        print(f"Sentez hatası: {e}")
+        print(f"[SENTEZ] ❌ Parse hatası: {e}")
+        print(f"[SENTEZ] Raw: {result[:300]}")
     
     return {
-        "summary": "Sentez yapılamadı. Lütfen soruyu farklı şekilde formüle edin.", 
+        "summary": "Sentez yapılamadı.", 
         "evidence_strength": "insufficient", 
-        "evidence_description": "Alakalı kaynak bulunamadı veya sentez sırasında hata oluştu.", 
+        "evidence_description": "Parse hatası.", 
         "key_points": [], 
-        "limitations": "Yeterli veri yok", 
+        "limitations": "Teknik hata", 
         "related_questions": []
     }
 
 async def analyze_paper_deeply(paper: dict, question: str) -> dict:
-    """GPT-4o ile derin makale analizi - İngilizce içeriği Türkçe'ye çevir"""
+    """Derin makale analizi"""
     title = paper.get("title", "")
     abstract = paper.get("abstract", "") or ""
     
     if not abstract:
         return {
             "relevance_score": 0,
-            "main_finding": "Bu makale için özet bulunmuyor.",
+            "main_finding": "Özet yok.",
             "key_insights": [],
             "methodology_note": "",
             "practical_takeaway": ""
         }
     
-    prompt = f'''ARAŞTIRILAN SORU: "{question}"
+    prompt = f'''SORU: "{question}"
 
 MAKALE:
 Başlık: {title}
-Özet (İngilizce): {abstract}
+Özet: {abstract}
 
-GÖREVİN:
-1. Bu makaleden soruyla ilgili EN ÖNEMLİ bulguları çıkar
-2. Her bulguyu TÜRKÇE'ye çevir ve basitçe açıkla
-3. Orijinal İngilizce cümleyi de göster
-4. Her bulgunun günlük hayatta ne anlama geldiğini yaz
+GÖREV:
+1. EN ÖNEMLİ bulguları çıkar
+2. TÜRKÇE çevir ve açıkla
+3. Orijinal İngilizce cümleyi göster
+4. Günlük hayatta ne demek?
 
-KURALLAR:
-- TÜRKÇE karakterleri düzgün kullan (ç, ğ, ı, ö, ş, ü)
-- Orijinal metinden DOĞRUDAN alıntı yap (manipüle etme)
-- 2-3 önemli bulgu yeterli, fazla detaya girme
-- Pratik ve uygulanabilir öneriler sun
-
-JSON formatında yanıt ver:
+SADECE JSON çıktısı ver:
+```json
 {{
     "relevance_score": 0-100,
-    "main_finding": "Makalenin ANA bulgusu (TÜRKÇE, 1-2 cümle)",
+    "main_finding": "ANA bulgu (TÜRKÇE)",
     "key_insights": [
         {{
-            "turkish": "TÜRKÇE çeviri ve açıklama - anlaşılır dil",
-            "original": "Orijinal İngilizce cümle - birebir alıntı",
-            "explanation": "Bu günlük hayatta ne demek? - basit açıklama"
+            "turkish": "TÜRKÇE açıklama",
+            "original": "Orijinal İngilizce",
+            "explanation": "Günlük hayatta ne demek?"
         }}
     ],
-    "methodology_note": "Araştırma yöntemi (örn: 1000 kişilik kohort çalışması, meta-analiz, RCT)",
-    "practical_takeaway": "Peki ne yapmalıyız? (1-2 cümle PRATİK öneri)"
-}}'''
+    "methodology_note": "Araştırma yöntemi",
+    "practical_takeaway": "PRATİK öneri"
+}}
+```'''
     
-    result = await call_gpt([{"role": "user", "content": prompt}], 2000, model="gpt-5-mini")
+    result = await call_gpt(prompt, 1500)
+    
+    if not result:
+        return {"relevance_score": 50, "main_finding": "Analiz yapılamadı.", "key_insights": [], "methodology_note": "", "practical_takeaway": ""}
+    
     try:
-        m = re.search(r'\{.*\}', result, re.DOTALL)
+        clean = result.replace("```json", "").replace("```", "").strip()
+        m = re.search(r'\{.*\}', clean, re.DOTALL)
         if m:
             return json.loads(m.group())
     except Exception as e:
         print(f"Derin analiz hatası: {e}")
     
-    return {
-        "relevance_score": 50,
-        "main_finding": "Analiz yapılamadı.",
-        "key_insights": [],
-        "methodology_note": "",
-        "practical_takeaway": ""
-    }
+    return {"relevance_score": 50, "main_finding": "Parse hatası.", "key_insights": [], "methodology_note": "", "practical_takeaway": ""}
 
 # PAGES
 @app.get("/", response_class=HTMLResponse)
@@ -649,21 +694,14 @@ async def api_login(
 
 @app.get("/api/health/openai")
 async def api_health_openai():
-    """
-    OpenAI bağlantısı + model erişimi test endpoint'i.
-    GET /api/health/openai
-    """
+    """OpenAI bağlantısı test endpoint'i"""
     if not OPENAI_API_KEY:
         return JSONResponse({"ok": False, "error": "OPENAI_API_KEY boş"}, status_code=500)
 
     test_prompt = "Sadece şu kelimeyi döndür: OK"
 
     try:
-        out = await call_gpt(
-            [{"role": "user", "content": test_prompt}],
-            max_tokens=20,
-            model="gpt-5-mini"
-        )
+        out = await call_gpt(test_prompt, max_tokens=20)
         out_clean = (out or "").strip()
 
         return JSONResponse({
@@ -714,7 +752,7 @@ async def api_research(
     
     # Format papers
     formatted_papers = []
-    for p in papers[:20]:  # 20 makale göster (önceden 10'du)
+    for p in papers[:20]:
         authors = p.get("authors", [])
         author_names = ", ".join([a.get("name", "") for a in authors[:3]])
         if len(authors) > 3:
@@ -763,7 +801,7 @@ async def api_analyze_paper(
     paper_abstract: str = Form(""),
     question: str = Form(...)
 ):
-    """Derin makale analizi - Claude ile"""
+    """Derin makale analizi"""
     paper = {
         "paperId": paper_id,
         "title": paper_title,
