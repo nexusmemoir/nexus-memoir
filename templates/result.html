@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Araştırma Sonuçları - AkademikSoru</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -13,14 +12,18 @@
         <div class="container">
             <a href="/" class="logo">
                 <span class="logo-icon">🔬</span>
-                <span class="logo-text">AkademikSoru</span>
+                <span>AkademikSoru</span>
             </a>
             <nav class="nav">
-                <a href="/" class="btn-new-search">+ Yeni Soru</a>
+                <a href="/" class="btn-new-search">+ Yeni Araştırma</a>
                 {% if user %}
-                <a href="/profile" class="user-name">👤 {{ user.display_name or user.username }}</a>
+                <div class="user-menu">
+                    <a href="/profile" class="user-name">👤 {{ user.display_name }}</a>
+                    <a href="/logout" class="btn-logout">Çıkış</a>
+                </div>
                 {% else %}
                 <a href="/login" class="btn-login">Giriş Yap</a>
+                <a href="/register" class="btn-register">Kayıt Ol</a>
                 {% endif %}
             </nav>
         </div>
@@ -28,554 +31,368 @@
 
     <main class="result-page">
         <div class="container">
-            
-            <div class="claim-box">
-                <div class="claim-label">Araştırılan Soru</div>
-                <h1 id="questionTitle" class="claim-text">Yükleniyor...</h1>
+            <!-- Loading State -->
+            <div id="loadingState" class="loading-state">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">Akademik makaleler taranıyor...</p>
+                <div class="loading-steps">
+                    <div class="step active" id="step1">🔍 Arama sorguları oluşturuluyor</div>
+                    <div class="step" id="step2">📚 Makaleler taranıyor</div>
+                    <div class="step" id="step3">🤖 AI ile analiz ediliyor</div>
+                    <div class="step" id="step4">📝 Türkçe özet hazırlanıyor</div>
+                </div>
             </div>
 
-            <!-- FAZ 2: Oylama ve Kaydetme -->
-            <div class="action-bar">
-                <div class="vote-buttons">
-                    <button class="vote-btn up" id="voteUp" onclick="vote('up')">
-                        👍 <span id="upvoteCount">0</span>
+            <!-- Error State -->
+            <div id="errorState" class="error-state" style="display:none;">
+                <span class="error-icon">❌</span>
+                <p id="errorMessage">Bir hata oluştu</p>
+                <button class="btn-retry" onclick="location.reload()">Tekrar Dene</button>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsContainer" style="display:none;">
+                <!-- Claim Box -->
+                <div class="claim-box">
+                    <div class="claim-label">Araştırılan Soru</div>
+                    <h1 class="claim-text" id="questionText"></h1>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="action-bar">
+                    <div class="vote-buttons">
+                        <button class="vote-btn up" id="upvoteBtn" onclick="vote('up')">
+                            <span>👍</span>
+                            <span class="vote-count" id="upvoteCount">0</span>
+                        </button>
+                        <button class="vote-btn down" id="downvoteBtn" onclick="vote('down')">
+                            <span>👎</span>
+                            <span class="vote-count" id="downvoteCount">0</span>
+                        </button>
+                    </div>
+                    <button class="save-btn" id="saveBtn" onclick="toggleSave()">
+                        <span>🔖</span>
+                        <span id="saveText">Kaydet</span>
                     </button>
-                    <button class="vote-btn down" id="voteDown" onclick="vote('down')">
-                        👎 <span id="downvoteCount">0</span>
-                    </button>
-                </div>
-                <button class="save-btn" id="saveBtn" onclick="saveQuestion()">
-                    📌 <span id="saveText">Kaydet</span>
-                </button>
-                <button class="share-btn" onclick="shareResult()">
-                    📤 Paylaş
-                </button>
-            </div>
-
-            <!-- FAZ 1: Kanıt Gücü Göstergesi -->
-            <div id="evidenceStrength" class="evidence-strength-box">
-                <div class="evidence-label">Kanıt Gücü</div>
-                <div id="evidenceBadge" class="evidence-badge-large"></div>
-                <p id="evidenceDescription" class="evidence-description"></p>
-            </div>
-
-            <section class="summary-section">
-                <div class="summary-header">
-                    <h2>📋 Bilimsel Özet</h2>
-                    <div id="explanationLevel" class="explanation-level-indicator"></div>
-                </div>
-                <div id="summaryText" class="summary-content">
-                    Yükleniyor...
-                </div>
-                
-                <div id="consensusBox" class="consensus-box" style="display: none;">
-                    <strong>🎯 Bilimsel Konsensüs:</strong>
-                    <p id="consensusText"></p>
-                </div>
-            </section>
-
-            <section class="findings-section">
-                <h2>🔍 Ana Bulgular</h2>
-                <div id="keyFindingsList" class="findings-list"></div>
-            </section>
-
-            <div id="conflictsSection" class="conflicts-section" style="display: none;">
-                <h2>⚖️ Çelişkili Görüşler</h2>
-                <div id="conflictsList" class="conflicts-list"></div>
-            </div>
-
-            <!-- FAZ 1: İlgili Sorular -->
-            <section id="relatedQuestionsSection" class="related-questions-section" style="display: none;">
-                <h2>💡 Bunu da Merak Edebilirsiniz</h2>
-                <div id="relatedQuestionsList" class="related-questions-grid"></div>
-            </section>
-
-            <div class="tabs">
-                <button class="tab active" data-tab="all">
-                    📚 Tüm Makaleler <span id="allCount" class="count">0</span>
-                </button>
-                <button class="tab" data-tab="recent">
-                    🆕 Son 5 Yıl <span id="recentCount" class="count">0</span>
-                </button>
-                <button class="tab" data-tab="cited">
-                    ⭐ Çok Atıf Alan <span id="citedCount" class="count">0</span>
-                </button>
-            </div>
-
-            <div id="allTab" class="tab-content active">
-                <div id="allPapers" class="sources-grid"></div>
-            </div>
-
-            <div id="recentTab" class="tab-content">
-                <div id="recentPapers" class="sources-grid"></div>
-            </div>
-
-            <div id="citedTab" class="tab-content">
-                <div id="citedPapers" class="sources-grid"></div>
-            </div>
-
-            <section class="metadata-section">
-                <div class="metadata-grid">
-                    <div class="metadata-card">
-                        <h3>🏷️ Bilimsel Terimler</h3>
-                        <div id="termsList" class="tags-list"></div>
-                    </div>
-                    <div class="metadata-card">
-                        <h3>🔬 Araştırma Alanları</h3>
-                        <div id="areasList" class="tags-list"></div>
-                    </div>
-                </div>
-            </section>
-
-            <div id="gapsSection" class="gaps-section" style="display: none;">
-                <h3>📌 Araştırma Boşlukları</h3>
-                <ul id="gapsList"></ul>
-            </div>
-
-            <section class="stats-section">
-                <h3>📊 Araştırma İstatistikleri</h3>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="stat-value" id="statTotal">0</span>
-                        <span class="stat-label">Toplam Makale</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="statRecent">0</span>
-                        <span class="stat-label">2020+ Yayın</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="statCited">0</span>
-                        <span class="stat-label">Yüksek Atıf</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="statOpen">0</span>
-                        <span class="stat-label">Açık Erişim</span>
-                    </div>
-                </div>
-                <div id="qualityNote" class="quality-note"></div>
-            </section>
-
-            <!-- FAZ 1: Sosyal Paylaşım -->
-            <section class="share-section">
-                <h3>📱 Paylaş</h3>
-                <div class="share-buttons">
-                    <button class="share-btn twitter" onclick="shareOnTwitter()">
-                        <span>🐦</span> Twitter
-                    </button>
-                    <button class="share-btn whatsapp" onclick="shareOnWhatsApp()">
-                        <span>💬</span> WhatsApp
-                    </button>
-                    <button class="share-btn copy" onclick="copyLink()">
-                        <span>🔗</span> Linki Kopyala
+                    <button class="share-btn" onclick="shareResult()">
+                        <span>📤</span>
+                        <span>Paylaş</span>
                     </button>
                 </div>
-            </section>
 
-            <div class="disclaimer result-disclaimer">
-                <p id="disclaimerText">
-                    <strong>⚠️ Önemli:</strong> Bu bir bilimsel literatür özetidir. 
-                    Tıbbi/kişisel tavsiye değildir. Sağlık kararlarınız için mutlaka uzmanınıza danışın.
-                </p>
+                <!-- Evidence Strength -->
+                <div class="evidence-strength-box">
+                    <div class="evidence-label">Kanıt Gücü</div>
+                    <div class="evidence-badge-large" id="evidenceBadge"></div>
+                    <p class="evidence-description" id="evidenceDesc"></p>
+                </div>
+
+                <!-- Summary -->
+                <div class="summary-section">
+                    <div class="summary-header">
+                        <span>📋</span>
+                        <h2>Özet</h2>
+                    </div>
+                    <div class="summary-text" id="summaryText"></div>
+                </div>
+
+                <!-- Papers - FAZ 3 Derin Analiz -->
+                <div class="papers-section">
+                    <h2>📚 Kaynak Makaleler (<span id="paperCount">0</span>)</h2>
+                    <div id="papersContainer"></div>
+                </div>
+
+                <!-- Related Questions -->
+                <div class="related-section">
+                    <h2>🔗 İlgili Sorular</h2>
+                    <div class="related-grid" id="relatedGrid"></div>
+                </div>
             </div>
-
-            <div class="new-search-box">
-                <a href="/" class="btn-search">🔍 Yeni Soru Sor</a>
-            </div>
-
         </div>
     </main>
 
     <footer class="footer">
         <div class="container">
-            <p>© 2026 AkademikSoru - Bilimsel Literatür Araştırma</p>
+            <p>© 2025 AkademikSoru - Bilimsel Araştırma Platformu</p>
         </div>
     </footer>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const resultData = sessionStorage.getItem('researchResult');
-            
-            if (!resultData) {
-                window.location.href = '/';
-                return;
-            }
+        let currentResult = null;
+        let questionHash = '';
+        let isSaved = false;
 
-            const data = JSON.parse(resultData);
-            renderResults(data);
-        });
+        // Get URL params
+        const params = new URLSearchParams(window.location.search);
+        const question = params.get('q');
+        const level = params.get('level') || 'medium';
 
-        function renderResults(data) {
-            document.getElementById('questionTitle').textContent = 
-                data.normalized_question || sessionStorage.getItem('originalQuestion');
-
-            const synthesis = data.synthesis || {};
-
-            // FAZ 1: Kanıt Gücü
-            renderEvidenceStrength(data.evidence_strength);
-
-            // FAZ 1: Anlatım Seviyesi Göstergesi
-            renderExplanationLevel(data.explanation_level);
-
-            // Summary
-            document.getElementById('summaryText').textContent = 
-                synthesis.summary || 'Özet oluşturulamadı.';
-
-            // Consensus
-            if (synthesis.consensus) {
-                document.getElementById('consensusBox').style.display = 'block';
-                document.getElementById('consensusText').textContent = synthesis.consensus;
-            }
-
-            // Key Findings
-            renderList(synthesis.key_findings || [], 'keyFindingsList', 'finding-item');
-
-            // Conflicts
-            if (synthesis.conflicting_views && synthesis.conflicting_views.length > 0) {
-                document.getElementById('conflictsSection').style.display = 'block';
-                renderList(synthesis.conflicting_views, 'conflictsList', 'conflict-item');
-            }
-
-            // FAZ 1: İlgili Sorular
-            if (data.related_questions && data.related_questions.length > 0) {
-                document.getElementById('relatedQuestionsSection').style.display = 'block';
-                renderRelatedQuestions(data.related_questions);
-            }
-
-            // Research Gaps
-            if (synthesis.research_gaps && synthesis.research_gaps.length > 0) {
-                document.getElementById('gapsSection').style.display = 'block';
-                renderList(synthesis.research_gaps, 'gapsList', 'gap-item', true);
-            }
-
-            // Papers
-            renderPapers(data.papers || [], 'allPapers');
-            renderPapers(data.recent_papers || [], 'recentPapers');
-            renderPapers(data.highly_cited || [], 'citedPapers');
-
-            // Counts
-            document.getElementById('allCount').textContent = (data.papers || []).length;
-            document.getElementById('recentCount').textContent = (data.recent_papers || []).length;
-            document.getElementById('citedCount').textContent = (data.highly_cited || []).length;
-
-            // Metadata
-            renderTags(data.scientific_terms || [], 'termsList');
-            renderTags(data.research_areas || [], 'areasList');
-
-            // Stats
-            const stats = data.stats || {};
-            document.getElementById('statTotal').textContent = stats.total_papers || 0;
-            document.getElementById('statRecent').textContent = stats.recent_count || 0;
-            document.getElementById('statCited').textContent = stats.highly_cited_count || 0;
-            document.getElementById('statOpen').textContent = stats.open_access_count || 0;
-
-            // Quality Note
-            if (synthesis.quality_note) {
-                document.getElementById('qualityNote').innerHTML = 
-                    `<strong>📌 Kalite Notu:</strong> ${synthesis.quality_note}`;
-            }
-
-            // Disclaimer
-            if (synthesis.disclaimer) {
-                document.getElementById('disclaimerText').innerHTML = 
-                    `<strong>⚠️ Önemli:</strong> ${synthesis.disclaimer}`;
-            }
-
-            setupTabs();
-        }
-
-        // FAZ 1: Kanıt Gücü Render
-        function renderEvidenceStrength(strength) {
-            const badge = document.getElementById('evidenceBadge');
-            const description = document.getElementById('evidenceDescription');
-
-            const levels = {
-                'strong': {
-                    icon: '🟢',
-                    text: 'Güçlü Kanıt',
-                    desc: 'Çok sayıda yüksek kaliteli çalışma, meta-analizler mevcut. Bulgular tutarlı.',
-                    class: 'evidence-strong'
-                },
-                'moderate': {
-                    icon: '🟡',
-                    text: 'Orta Seviye Kanıt',
-                    desc: 'Sınırlı sayıda çalışma var. Bazı çelişkili bulgular olabilir.',
-                    class: 'evidence-moderate'
-                },
-                'limited': {
-                    icon: '🟠',
-                    text: 'Sınırlı Kanıt',
-                    desc: 'Az sayıda çalışma. Daha fazla araştırma gerekli.',
-                    class: 'evidence-limited'
-                },
-                'insufficient': {
-                    icon: '🔴',
-                    text: 'Yetersiz Veri',
-                    desc: 'Yeterli akademik çalışma bulunamadı.',
-                    class: 'evidence-insufficient'
-                }
-            };
-
-            const level = levels[strength] || levels['insufficient'];
-            
-            badge.innerHTML = `<span class="${level.class}">${level.icon} ${level.text}</span>`;
-            description.textContent = level.desc;
-        }
-
-        // FAZ 1: Anlatım Seviyesi Göstergesi
-        function renderExplanationLevel(level) {
-            const indicator = document.getElementById('explanationLevel');
-            
-            const levels = {
-                'simple': { icon: '🧒', text: 'Basit Anlatım' },
-                'medium': { icon: '🧑', text: 'Orta Seviye' },
-                'academic': { icon: '🎓', text: 'Akademik Dil' }
-            };
-
-            const l = levels[level] || levels['medium'];
-            indicator.innerHTML = `<span class="level-indicator">${l.icon} ${l.text}</span>`;
-        }
-
-        // FAZ 1: İlgili Sorular
-        function renderRelatedQuestions(questions) {
-            const container = document.getElementById('relatedQuestionsList');
-            
-            let html = '';
-            questions.forEach(q => {
-                html += `
-                    <div class="related-question-card" onclick="askRelatedQuestion('${escapeHtml(q.question)}')">
-                        <span class="related-icon">${q.icon}</span>
-                        <h4>${escapeHtml(q.question)}</h4>
-                        <span class="related-action">Araştır →</span>
-                    </div>
-                `;
-            });
-
-            container.innerHTML = html;
-        }
-
-        function askRelatedQuestion(question) {
-            sessionStorage.setItem('prefillQuestion', question);
+        if (!question) {
             window.location.href = '/';
         }
 
-        function renderList(items, containerId, className, isUl = false) {
-            const container = document.getElementById(containerId);
-            if (!items || items.length === 0) {
-                container.innerHTML = '<p class="empty-state">-</p>';
-                return;
-            }
+        // Start research
+        async function startResearch() {
+            const loadingSteps = ['step1', 'step2', 'step3', 'step4'];
+            let currentStep = 0;
 
-            let html = '';
-            items.forEach(item => {
-                if (isUl) {
-                    html += `<li class="${className}">${escapeHtml(item)}</li>`;
-                } else {
-                    html += `<div class="${className}">✓ ${escapeHtml(item)}</div>`;
+            const stepInterval = setInterval(() => {
+                if (currentStep < loadingSteps.length - 1) {
+                    document.getElementById(loadingSteps[currentStep]).classList.remove('active');
+                    document.getElementById(loadingSteps[currentStep]).classList.add('done');
+                    currentStep++;
+                    document.getElementById(loadingSteps[currentStep]).classList.add('active');
                 }
-            });
+            }, 2000);
 
-            container.innerHTML = html;
+            try {
+                const formData = new FormData();
+                formData.append('question', question);
+                formData.append('level', level);
+
+                const response = await fetch('/api/research', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                clearInterval(stepInterval);
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Araştırma başarısız');
+                }
+
+                currentResult = await response.json();
+                questionHash = currentResult.question_hash;
+                displayResults(currentResult);
+
+                // Get vote counts
+                loadVotes();
+
+            } catch (error) {
+                clearInterval(stepInterval);
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('errorState').style.display = 'flex';
+                document.getElementById('errorMessage').textContent = error.message;
+            }
         }
 
-        function renderPapers(papers, containerId) {
-            const container = document.getElementById(containerId);
+        function displayResults(data) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('resultsContainer').style.display = 'block';
+
+            document.getElementById('questionText').textContent = data.question;
+
+            // Evidence badge
+            const badge = document.getElementById('evidenceBadge');
+            const strength = data.evidence_strength;
+            badge.className = 'evidence-badge-large ' + strength;
+            const labels = { strong: '✓ Güçlü Kanıt', moderate: '◐ Orta Düzey Kanıt', limited: '○ Sınırlı Kanıt', insufficient: '⊘ Yetersiz Kanıt' };
+            badge.textContent = labels[strength] || labels.moderate;
+            document.getElementById('evidenceDesc').textContent = data.evidence_description;
+
+            // Summary
+            document.getElementById('summaryText').innerHTML = data.summary.replace(/\n/g, '<br>');
+
+            // Papers with FAZ 3 deep analysis
+            const papersContainer = document.getElementById('papersContainer');
+            document.getElementById('paperCount').textContent = data.papers.length;
             
-            if (!papers || papers.length === 0) {
-                container.innerHTML = '<p class="empty-state">Makale bulunamadı.</p>';
-                return;
-            }
+            papersContainer.innerHTML = data.papers.map((p, idx) => `
+                <div class="paper-card" id="paper-${idx}">
+                    <div class="paper-header">
+                        <h3 class="paper-title">${p.title}</h3>
+                    </div>
+                    <div class="paper-meta">
+                        <span>📅 ${p.year || 'Yıl belirtilmemiş'}</span>
+                        <span>📊 ${p.citations} atıf</span>
+                        <span>👤 ${p.authors || 'Yazar belirtilmemiş'}</span>
+                    </div>
+                    <p class="paper-abstract">${p.abstract ? (p.abstract.length > 300 ? p.abstract.substring(0, 300) + '...' : p.abstract) : 'Özet bulunmuyor'}</p>
+                    <div class="paper-actions">
+                        <button class="btn-analyze" onclick="analyzePaper(${idx})" id="analyzeBtn-${idx}">
+                            🔬 Derinlemesine Analiz Et
+                        </button>
+                        ${p.url ? `<a href="${p.url}" target="_blank" class="btn-analyze" style="background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-secondary);">📄 Makaleyi Görüntüle</a>` : ''}
+                    </div>
+                    <div class="paper-analysis" id="analysis-${idx}" style="display:none;"></div>
+                </div>
+            `).join('');
 
-            let html = '';
-            papers.forEach((paper, index) => {
-                const year = paper.year || 'N/A';
-                const citations = paper.citations || 0;
-                const openAccess = paper.open_access ? '🔓 Açık Erişim' : '';
-                const pdfLink = paper.pdf_url ? 
-                    `<a href="${paper.pdf_url}" target="_blank" class="pdf-link">📄 PDF</a>` : '';
+            // Related questions
+            const relatedGrid = document.getElementById('relatedGrid');
+            relatedGrid.innerHTML = (data.related_questions || []).map(q => `
+                <div class="related-card" onclick="searchRelated('${q.replace(/'/g, "\\'")}')">
+                    <h3>${q}</h3>
+                </div>
+            `).join('');
+        }
 
-                html += `
-                    <div class="source-card paper-card">
-                        <div class="source-index">${index + 1}</div>
-                        <div class="source-content">
-                            <h4 class="source-title">${escapeHtml(paper.title)}</h4>
-                            <div class="source-meta">
-                                <span class="source-authors">${escapeHtml(paper.authors)}</span>
-                                <span class="source-year">${year}</span>
-                            </div>
-                            ${paper.venue ? `<div class="source-venue">${escapeHtml(paper.venue)}</div>` : ''}
-                            <div class="paper-stats">
-                                <span class="citation-count">📊 ${citations} atıf</span>
-                                ${openAccess ? `<span class="open-access">${openAccess}</span>` : ''}
-                            </div>
-                            ${paper.abstract ? `<div class="paper-abstract">${escapeHtml(paper.abstract)}</div>` : ''}
-                            <div class="paper-actions">
-                                <a href="${paper.url}" target="_blank" rel="noopener" class="paper-link">
-                                    Makaleyi Görüntüle →
-                                </a>
-                                ${pdfLink}
+        // FAZ 3: Derin Makale Analizi
+        async function analyzePaper(idx) {
+            const paper = currentResult.papers[idx];
+            const btn = document.getElementById(`analyzeBtn-${idx}`);
+            const analysisDiv = document.getElementById(`analysis-${idx}`);
+
+            btn.classList.add('loading');
+            btn.innerHTML = '<span class="spinner"></span> Analiz ediliyor...';
+
+            try {
+                const formData = new FormData();
+                formData.append('paper_id', paper.id);
+                formData.append('paper_title', paper.title);
+                formData.append('paper_abstract', paper.abstract || '');
+                formData.append('question', currentResult.question);
+
+                const response = await fetch('/api/paper/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.analysis) {
+                    const a = data.analysis;
+                    analysisDiv.innerHTML = `
+                        <div class="analysis-section">
+                            <h4 class="analysis-title">🎯 Ana Bulgu</h4>
+                            <div class="key-finding">
+                                <p class="key-finding-text">${a.main_finding}</p>
                             </div>
                         </div>
-                    </div>
-                `;
-            });
 
-            container.innerHTML = html;
-        }
+                        ${a.key_insights && a.key_insights.length > 0 ? `
+                        <div class="analysis-section">
+                            <h4 class="analysis-title">💡 Önemli Noktalar (Türkçe Çeviri)</h4>
+                            ${a.key_insights.map((insight, i) => `
+                                <div class="key-finding">
+                                    <p class="key-finding-text">${insight.turkish}</p>
+                                    <p class="key-finding-original">
+                                        <strong>Orijinal:</strong> "${insight.original}"
+                                    </p>
+                                    ${insight.explanation ? `<p class="key-finding-text" style="margin-top:10px;color:var(--accent-cyan);">💬 ${insight.explanation}</p>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : ''}
 
-        function renderTags(tags, containerId) {
-            const container = document.getElementById(containerId);
-            
-            if (!tags || tags.length === 0) {
-                container.innerHTML = '<span class="empty-state">-</span>';
-                return;
+                        ${a.methodology_note ? `
+                        <div class="analysis-section">
+                            <h4 class="analysis-title">🔬 Araştırma Yöntemi</h4>
+                            <p style="color:var(--text-secondary)">${a.methodology_note}</p>
+                        </div>
+                        ` : ''}
+
+                        ${a.practical_takeaway ? `
+                        <div class="analysis-section">
+                            <h4 class="analysis-title">✅ Pratik Sonuç</h4>
+                            <div class="key-finding" style="border-left-color: var(--accent-green);">
+                                <p class="key-finding-text">${a.practical_takeaway}</p>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <div class="relevance-meter">
+                            <div class="relevance-label">Soruyla İlgililik: %${a.relevance_score}</div>
+                            <div class="relevance-bar">
+                                <div class="relevance-fill" style="width: ${a.relevance_score}%"></div>
+                            </div>
+                        </div>
+                    `;
+                    analysisDiv.style.display = 'block';
+                    btn.innerHTML = '✓ Analiz Tamamlandı';
+                    btn.disabled = true;
+                } else {
+                    throw new Error('Analiz yapılamadı');
+                }
+            } catch (error) {
+                btn.classList.remove('loading');
+                btn.innerHTML = '❌ Hata - Tekrar Dene';
+                console.error(error);
             }
-
-            let html = '';
-            tags.forEach(tag => {
-                html += `<span class="keyword-tag">${escapeHtml(tag)}</span>`;
-            });
-
-            container.innerHTML = html;
         }
 
-        function setupTabs() {
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    tabs.forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    
-                    tab.classList.add('active');
-                    const tabName = tab.dataset.tab;
-                    document.getElementById(tabName + 'Tab').classList.add('active');
-                });
-            });
-        }
-
-        // FAZ 1: Paylaşım Fonksiyonları
-        function shareOnTwitter() {
-            const question = sessionStorage.getItem('originalQuestion');
-            const text = `"${question}" sorusunun bilimsel yanıtını @AkademikSoru'da buldum!`;
-            const url = window.location.href;
-            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
-        }
-
-        function shareOnWhatsApp() {
-            const question = sessionStorage.getItem('originalQuestion');
-            const text = `"${question}" sorusunun bilimsel yanıtını buldum: ${window.location.href}`;
-            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-        }
-
-        function copyLink() {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                alert('Link kopyalandı!');
-            });
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // FAZ 2: Oylama ve Kaydetme
-        let questionHash = null;
-        let isSaved = false;
-
-        async function initVotesAndSave() {
-            const data = JSON.parse(sessionStorage.getItem('researchResult'));
-            if (data && data.question_hash) {
-                questionHash = data.question_hash;
-                isSaved = data.is_saved || false;
-                updateSaveButton();
-                
-                // Oy bilgisini al
-                try {
-                    const r = await fetch(`/api/vote/${questionHash}`);
-                    const votes = await r.json();
-                    document.getElementById('upvoteCount').textContent = votes.upvotes || 0;
-                    document.getElementById('downvoteCount').textContent = votes.downvotes || 0;
-                    if (votes.user_vote === 'up') {
-                        document.getElementById('voteUp').classList.add('active');
-                    } else if (votes.user_vote === 'down') {
-                        document.getElementById('voteDown').classList.add('active');
-                    }
-                } catch (e) {}
+        async function loadVotes() {
+            try {
+                const response = await fetch(`/api/vote/${questionHash}`);
+                const data = await response.json();
+                document.getElementById('upvoteCount').textContent = data.upvotes;
+                document.getElementById('downvoteCount').textContent = data.downvotes;
+                if (data.user_vote === 'up') {
+                    document.getElementById('upvoteBtn').classList.add('active');
+                } else if (data.user_vote === 'down') {
+                    document.getElementById('downvoteBtn').classList.add('active');
+                }
+            } catch (e) {
+                console.error(e);
             }
         }
 
         async function vote(type) {
-            if (!questionHash) return;
             const formData = new FormData();
             formData.append('question_hash', questionHash);
             formData.append('vote_type', type);
-            
-            try {
-                const r = await fetch('/api/vote', {method: 'POST', body: formData});
-                const data = await r.json();
-                if (data.success) {
-                    document.getElementById('upvoteCount').textContent = data.upvotes;
-                    document.getElementById('downvoteCount').textContent = data.downvotes;
-                    
-                    document.getElementById('voteUp').classList.remove('active');
-                    document.getElementById('voteDown').classList.remove('active');
-                    if (data.action !== 'removed') {
-                        document.getElementById('vote' + (type === 'up' ? 'Up' : 'Down')).classList.add('active');
-                    }
-                }
-            } catch (e) {}
-        }
 
-        async function saveQuestion() {
-            const question = sessionStorage.getItem('originalQuestion');
-            if (!question) return;
-            
-            if (isSaved) {
-                alert('Bu soru zaten kayıtlı.');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('question', question);
-            
             try {
-                const r = await fetch('/api/questions/save', {method: 'POST', body: formData});
-                const data = await r.json();
-                if (r.ok) {
-                    isSaved = true;
-                    updateSaveButton();
-                } else {
-                    alert(data.error || 'Kaydetme başarısız. Giriş yapmış olmanız gerekiyor.');
+                const response = await fetch('/api/vote', { method: 'POST', body: formData });
+                const data = await response.json();
+                document.getElementById('upvoteCount').textContent = data.upvotes;
+                document.getElementById('downvoteCount').textContent = data.downvotes;
+                
+                document.getElementById('upvoteBtn').classList.remove('active');
+                document.getElementById('downvoteBtn').classList.remove('active');
+                if (data.user_vote === 'up') {
+                    document.getElementById('upvoteBtn').classList.add('active');
+                } else if (data.user_vote === 'down') {
+                    document.getElementById('downvoteBtn').classList.add('active');
                 }
             } catch (e) {
-                alert('Bir hata oluştu.');
+                console.error(e);
             }
         }
 
-        function updateSaveButton() {
-            const btn = document.getElementById('saveBtn');
-            const text = document.getElementById('saveText');
-            if (isSaved) {
-                btn.classList.add('saved');
-                text.textContent = 'Kayıtlı';
-            } else {
-                btn.classList.remove('saved');
-                text.textContent = 'Kaydet';
+        async function toggleSave() {
+            if (isSaved) return;
+
+            const formData = new FormData();
+            formData.append('question', currentResult.question);
+            formData.append('category', currentResult.category);
+            formData.append('result_data', JSON.stringify(currentResult));
+
+            try {
+                const response = await fetch('/api/questions/save', { method: 'POST', body: formData });
+                if (response.ok) {
+                    isSaved = true;
+                    document.getElementById('saveBtn').classList.add('saved');
+                    document.getElementById('saveText').textContent = 'Kaydedildi';
+                } else if (response.status === 401) {
+                    window.location.href = '/login';
+                }
+            } catch (e) {
+                console.error(e);
             }
         }
 
         function shareResult() {
-            const question = sessionStorage.getItem('originalQuestion');
-            const text = `"${question}" sorusunun bilimsel yanıtını AkademikSoru'da buldum!`;
             if (navigator.share) {
-                navigator.share({title: 'AkademikSoru', text: text, url: window.location.href});
+                navigator.share({
+                    title: currentResult.question,
+                    text: `AkademikSoru araştırma sonucu: ${currentResult.question}`,
+                    url: window.location.href
+                });
             } else {
-                copyLink();
+                navigator.clipboard.writeText(window.location.href);
+                alert('Link kopyalandı!');
             }
         }
 
-        // Sayfa yüklendiğinde oy ve kayıt bilgisini al
-        initVotesAndSave();
+        function searchRelated(q) {
+            const params = new URLSearchParams({ q: q, level: level });
+            window.location.href = '/result?' + params.toString();
+        }
+
+        // Start
+        startResearch();
     </script>
 </body>
 </html>

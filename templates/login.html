@@ -12,33 +12,35 @@
         <div class="container">
             <a href="/" class="logo">
                 <span class="logo-icon">🔬</span>
-                <span class="logo-text">AkademikSoru</span>
+                <span>AkademikSoru</span>
             </a>
+            <nav class="nav">
+                <a href="/">Ana Sayfa</a>
+            </nav>
         </div>
     </header>
 
     <main class="auth-page">
-        <div class="container">
-            <div class="auth-card">
-                <h1 class="auth-title">Giriş Yap</h1>
-                <p class="auth-subtitle">Araştırmalarını kaydet, takip et</p>
-                
-                <form id="loginForm" class="auth-form">
-                    <div class="form-group">
-                        <label for="email">Email veya Kullanıcı Adı</label>
-                        <input type="text" id="email" name="email" required placeholder="ornek@email.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Şifre</label>
-                        <input type="password" id="password" name="password" required placeholder="••••••••">
-                    </div>
-                    <div id="errorMsg" class="error-message" style="display:none;"></div>
-                    <button type="submit" class="btn-auth">Giriş Yap</button>
-                </form>
-                
-                <div class="auth-footer">
-                    <p>Hesabın yok mu? <a href="/register">Kayıt Ol</a></p>
+        <div class="auth-card">
+            <h1 class="auth-title">Hoş Geldiniz</h1>
+            <p class="auth-subtitle">Hesabınıza giriş yapın</p>
+
+            <div id="errorBox" class="error-message" style="display:none;"></div>
+
+            <form class="auth-form" id="loginForm">
+                <div class="form-group">
+                    <label for="email">E-posta veya Kullanıcı Adı</label>
+                    <input type="text" id="email" name="email" placeholder="email@ornek.com" required>
                 </div>
+                <div class="form-group">
+                    <label for="password">Şifre</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-auth" id="submitBtn">Giriş Yap</button>
+            </form>
+
+            <div class="auth-footer">
+                Hesabınız yok mu? <a href="/register">Kayıt olun</a>
             </div>
         </div>
     </main>
@@ -46,26 +48,36 @@
     <script>
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('errorMsg');
+            const btn = document.getElementById('submitBtn');
+            const errorBox = document.getElementById('errorBox');
             
-            const formData = new FormData();
-            formData.append('email', email);
-            formData.append('password', password);
-            
+            btn.disabled = true;
+            btn.textContent = 'Giriş yapılıyor...';
+            errorBox.style.display = 'none';
+
+            const formData = new FormData(e.target);
+
             try {
-                const r = await fetch('/api/login', {method: 'POST', body: formData});
-                const data = await r.json();
-                if (r.ok) {
-                    window.location.href = '/profile';
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect || '/profile';
                 } else {
-                    errorDiv.textContent = data.error;
-                    errorDiv.style.display = 'block';
+                    errorBox.textContent = data.error || 'Giriş başarısız';
+                    errorBox.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Giriş Yap';
                 }
-            } catch (err) {
-                errorDiv.textContent = 'Bir hata oluştu.';
-                errorDiv.style.display = 'block';
+            } catch (error) {
+                errorBox.textContent = 'Bir hata oluştu. Tekrar deneyin.';
+                errorBox.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Giriş Yap';
             }
         });
     </script>

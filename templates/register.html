@@ -12,47 +12,45 @@
         <div class="container">
             <a href="/" class="logo">
                 <span class="logo-icon">🔬</span>
-                <span class="logo-text">AkademikSoru</span>
+                <span>AkademikSoru</span>
             </a>
+            <nav class="nav">
+                <a href="/">Ana Sayfa</a>
+            </nav>
         </div>
     </header>
 
     <main class="auth-page">
-        <div class="container">
-            <div class="auth-card">
-                <h1 class="auth-title">Kayıt Ol</h1>
-                <p class="auth-subtitle">Ücretsiz hesap oluştur</p>
-                
-                <form id="registerForm" class="auth-form">
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" name="email" required placeholder="ornek@email.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="username">Kullanıcı Adı</label>
-                        <input type="text" id="username" name="username" required placeholder="kullaniciadi" pattern="[a-zA-Z0-9_]+" minlength="3" maxlength="20">
-                        <small>3-20 karakter, harf, rakam ve _</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="display_name">Görünen Ad (opsiyonel)</label>
-                        <input type="text" id="display_name" name="display_name" placeholder="Adınız">
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Şifre</label>
-                        <input type="password" id="password" name="password" required placeholder="••••••••" minlength="6">
-                        <small>En az 6 karakter</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="password2">Şifre Tekrar</label>
-                        <input type="password" id="password2" name="password2" required placeholder="••••••••">
-                    </div>
-                    <div id="errorMsg" class="error-message" style="display:none;"></div>
-                    <button type="submit" class="btn-auth">Kayıt Ol</button>
-                </form>
-                
-                <div class="auth-footer">
-                    <p>Zaten hesabın var mı? <a href="/login">Giriş Yap</a></p>
+        <div class="auth-card">
+            <h1 class="auth-title">Hesap Oluştur</h1>
+            <p class="auth-subtitle">Bilimsel araştırma yolculuğuna başlayın</p>
+
+            <div id="errorBox" class="error-message" style="display:none;"></div>
+
+            <form class="auth-form" id="registerForm">
+                <div class="form-group">
+                    <label for="display_name">Ad Soyad</label>
+                    <input type="text" id="display_name" name="display_name" placeholder="Ali Yılmaz" required>
                 </div>
+                <div class="form-group">
+                    <label for="username">Kullanıcı Adı</label>
+                    <input type="text" id="username" name="username" placeholder="aliyilmaz" required minlength="3">
+                    <small>En az 3 karakter, sadece harf ve rakam</small>
+                </div>
+                <div class="form-group">
+                    <label for="email">E-posta</label>
+                    <input type="email" id="email" name="email" placeholder="email@ornek.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Şifre</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required minlength="6">
+                    <small>En az 6 karakter</small>
+                </div>
+                <button type="submit" class="btn-auth" id="submitBtn">Kayıt Ol</button>
+            </form>
+
+            <div class="auth-footer">
+                Zaten hesabınız var mı? <a href="/login">Giriş yapın</a>
             </div>
         </div>
     </main>
@@ -60,34 +58,36 @@
     <script>
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const errorDiv = document.getElementById('errorMsg');
-            const password = document.getElementById('password').value;
-            const password2 = document.getElementById('password2').value;
+            const btn = document.getElementById('submitBtn');
+            const errorBox = document.getElementById('errorBox');
             
-            if (password !== password2) {
-                errorDiv.textContent = 'Şifreler eşleşmiyor.';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('email', document.getElementById('email').value);
-            formData.append('username', document.getElementById('username').value);
-            formData.append('password', password);
-            formData.append('display_name', document.getElementById('display_name').value);
-            
+            btn.disabled = true;
+            btn.textContent = 'Kaydediliyor...';
+            errorBox.style.display = 'none';
+
+            const formData = new FormData(e.target);
+
             try {
-                const r = await fetch('/api/register', {method: 'POST', body: formData});
-                const data = await r.json();
-                if (r.ok) {
-                    window.location.href = '/profile';
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect || '/profile';
                 } else {
-                    errorDiv.textContent = data.error;
-                    errorDiv.style.display = 'block';
+                    errorBox.textContent = data.error || 'Kayıt başarısız';
+                    errorBox.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Kayıt Ol';
                 }
-            } catch (err) {
-                errorDiv.textContent = 'Bir hata oluştu.';
-                errorDiv.style.display = 'block';
+            } catch (error) {
+                errorBox.textContent = 'Bir hata oluştu. Tekrar deneyin.';
+                errorBox.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Kayıt Ol';
             }
         });
     </script>

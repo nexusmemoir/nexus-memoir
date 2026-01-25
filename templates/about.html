@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hakkında - AkademikSoru</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -13,204 +12,86 @@
         <div class="container">
             <a href="/" class="logo">
                 <span class="logo-icon">🔬</span>
-                <span class="logo-text">AkademikSoru</span>
+                <span>AkademikSoru</span>
             </a>
             <nav class="nav">
                 <a href="/">Ana Sayfa</a>
+                {% if user %}
+                <div class="user-menu">
+                    <a href="/profile" class="user-name">👤 {{ user.display_name }}</a>
+                    <a href="/logout" class="btn-logout">Çıkış</a>
+                </div>
+                {% else %}
+                <a href="/login" class="btn-login">Giriş Yap</a>
+                <a href="/register" class="btn-register">Kayıt Ol</a>
+                {% endif %}
             </nav>
         </div>
     </header>
 
-    <main class="about-page" style="padding: 60px 0;">
+    <main class="result-page">
         <div class="container">
-            <h1 style="font-size: 2.8rem; margin-bottom: 20px;">
-                Bilimi <span class="gradient-text">Herkes İçin</span>
-            </h1>
-            <p style="font-size: 1.15rem; color: var(--text-secondary); margin-bottom: 50px; max-width: 700px;">
-                Merak ettiğiniz soruların bilimsel yanıtlarını, akademik makalelerden özetleyerek sunuyoruz.
-            </p>
-            
-            <div class="about-content" style="max-width: 750px;">
-                
-                <section style="margin-bottom: 50px;">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 18px; color: var(--accent-blue);">
-                        🎯 Neden Var?
-                    </h2>
-                    <p style="color: var(--text-secondary); line-height: 1.9; margin-bottom: 16px;">
-                        İnternet bilgi kirliliği ile dolu. Sosyal medyada her gün yüzlerce sağlık, 
-                        beslenme, yaşam tarzı iddiası dolaşıyor. Ama hangisi doğru?
-                    </p>
-                    <p style="color: var(--text-secondary); line-height: 1.9; margin-bottom: 16px;">
-                        Akademik makaleler var ama karmaşık ve erişimi zor. Haber siteleri var ama 
-                        çoğu yüzeysel. ChatGPT var ama kaynak göstermiyor.
-                    </p>
-                    <p style="color: var(--text-primary); line-height: 1.9; font-weight: 600;">
-                        Biz bu boşluğu dolduruyoruz: Akademik bilgiyi, herkesin anlayabileceği 
-                        şekilde, kaynaklarıyla birlikte sunuyoruz.
-                    </p>
-                </section>
+            <div class="claim-box">
+                <div class="claim-label">Hakkında</div>
+                <h1 class="claim-text">AkademikSoru Nedir?</h1>
+            </div>
 
-                <section style="margin-bottom: 50px;">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 18px; color: var(--accent-blue);">
-                        🔬 Nasıl Çalışır?
-                    </h2>
-                    <div style="display: flex; flex-direction: column; gap: 20px;">
-                        <div style="padding: 20px; background: var(--bg-card); border-left: 3px solid var(--accent-blue); border-radius: 10px;">
-                            <h3 style="margin-bottom: 8px;">1️⃣ Soru Analizi</h3>
-                            <p style="color: var(--text-secondary); line-height: 1.7;">
-                                Yapay zeka sorunuzu analiz eder ve en uygun bilimsel terimleri belirler.
-                            </p>
-                        </div>
-                        <div style="padding: 20px; background: var(--bg-card); border-left: 3px solid var(--accent-purple); border-radius: 10px;">
-                            <h3 style="margin-bottom: 8px;">2️⃣ Literatür Taraması</h3>
-                            <p style="color: var(--text-secondary); line-height: 1.7;">
-                                Semantic Scholar gibi akademik veritabanlarında binlerce makale taranır.
-                            </p>
-                        </div>
-                        <div style="padding: 20px; background: var(--bg-card); border-left: 3px solid var(--accent-green); border-radius: 10px;">
-                            <h3 style="margin-bottom: 8px;">3️⃣ Sentez ve Özet</h3>
-                            <p style="color: var(--text-secondary); line-height: 1.7;">
-                                Bulunan makaleler analiz edilir ve size anlaşılır bir özet sunulur.
-                            </p>
-                        </div>
-                        <div style="padding: 20px; background: var(--bg-card); border-left: 3px solid var(--accent-orange); border-radius: 10px;">
-                            <h3 style="margin-bottom: 8px;">4️⃣ Kaynak Gösterimi</h3>
-                            <p style="color: var(--text-secondary); line-height: 1.7;">
-                                Her bulgu için kaynak makale linkleri verilir. İsterseniz orijinal makalelere ulaşabilirsiniz.
-                            </p>
-                        </div>
-                    </div>
-                </section>
+            <div class="summary-section">
+                <div class="summary-header">
+                    <span>🎯</span>
+                    <h2>Misyonumuz</h2>
+                </div>
+                <div class="summary-text">
+                    AkademikSoru, günlük hayatta karşılaştığınız soruların bilimsel yanıtlarını bulmanıza yardımcı olan bir platformdur. 
+                    Akademik makaleleri tarayarak, yapay zeka destekli analiz ile Türkçe özet ve kanıt değerlendirmesi sunuyoruz.
+                </div>
+            </div>
 
-                <section style="margin-bottom: 50px;">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 18px; color: var(--accent-blue);">
-                        📚 Kaynaklar
-                    </h2>
-                    <p style="color: var(--text-secondary); line-height: 1.9; margin-bottom: 20px;">
-                        Araştırmalarımızda şu kaynaklardan faydalanıyoruz:
-                    </p>
-                    <ul style="color: var(--text-secondary); line-height: 2; padding-left: 24px;">
-                        <li>
-                            <strong style="color: var(--accent-blue);">Semantic Scholar:</strong> 
-                            200+ milyon akademik makale içeren AI-destekli araştırma motoru
-                        </li>
-                        <li>
-                            <strong style="color: var(--accent-blue);">PubMed:</strong> 
-                            35+ milyon tıbbi ve yaşam bilimleri makalesi
-                        </li>
-                        <li>
-                            <strong style="color: var(--accent-blue);">CrossRef:</strong> 
-                            Bilimsel yayınların metadata veritabanı
-                        </li>
-                    </ul>
-                </section>
+            <div class="summary-section">
+                <div class="summary-header">
+                    <span>⚙️</span>
+                    <h2>Nasıl Çalışır?</h2>
+                </div>
+                <div class="summary-text">
+                    <p><strong>1. Soru Sorma:</strong> Merak ettiğiniz herhangi bir konuyu sorun.</p><br>
+                    <p><strong>2. Makale Tarama:</strong> Semantic Scholar üzerinden milyonlarca akademik makale taranır.</p><br>
+                    <p><strong>3. AI Analizi:</strong> GPT-4 ile makaleler analiz edilir ve önemli bulgular çıkarılır.</p><br>
+                    <p><strong>4. Türkçe Özet:</strong> Tüm bulgular anlaşılır Türkçe ile özetlenir.</p><br>
+                    <p><strong>5. Kanıt Gücü:</strong> Bilimsel kanıt seviyesi (güçlü/orta/sınırlı) gösterilir.</p>
+                </div>
+            </div>
 
-                <section style="margin-bottom: 50px;">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 18px; color: var(--accent-blue);">
-                        ✅ Ne Yapıyoruz?
-                    </h2>
-                    <ul style="color: var(--text-secondary); line-height: 2; padding-left: 24px;">
-                        <li>Akademik makaleleri tarıyoruz</li>
-                        <li>Bulguları objektif şekilde özetliyoruz</li>
-                        <li>Kaynakları şeffaf şekilde gösteriyoruz</li>
-                        <li>Çelişkili bulguları açıkça belirtiyoruz</li>
-                        <li>Halka anlaşılır dil kullanıyoruz</li>
-                    </ul>
-                </section>
+            <div class="summary-section">
+                <div class="summary-header">
+                    <span>🔬</span>
+                    <h2>FAZ 3: Derin Analiz</h2>
+                </div>
+                <div class="summary-text">
+                    <p>En son sürümümüzde her makaleye tıklayarak derinlemesine analiz alabilirsiniz:</p><br>
+                    <p>• İngilizce makaleler otomatik Türkçe'ye çevrilir</p>
+                    <p>• Sorunuzla ilgili en önemli cümleler çıkarılır</p>
+                    <p>• Her bulgunun ne anlama geldiği basitçe açıklanır</p>
+                    <p>• Pratik sonuçlar ve öneriler sunulur</p>
+                </div>
+            </div>
 
-                <section style="margin-bottom: 50px;">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 18px; color: var(--accent-blue);">
-                        ❌ Ne Yapmıyoruz?
-                    </h2>
-                    <ul style="color: var(--text-secondary); line-height: 2; padding-left: 24px;">
-                        <li>Tıbbi/kişisel tavsiye vermiyoruz</li>
-                        <li>Kesin hüküm vermiyoruz ("zararlıdır", "faydalıdır" vb.)</li>
-                        <li>Tek bir kaynağa dayanarak yargıya varmıyoruz</li>
-                        <li>Bilimsel konsensüsü çarpıtmıyoruz</li>
-                    </ul>
-                </section>
-
-                <section style="margin-bottom: 50px;">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 18px; color: var(--accent-blue);">
-                        ⚠️ Önemli Uyarılar
-                    </h2>
-                    <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); padding: 24px; border-radius: 14px;">
-                        <ul style="color: var(--text-secondary); line-height: 1.9; padding-left: 24px;">
-                            <li>
-                                <strong>Bu bir tıbbi tavsiye platformu değildir.</strong> 
-                                Sağlık sorunlarınız için mutlaka doktorunuza danışın.
-                            </li>
-                            <li>
-                                <strong>Bilimsel konsensüs zaman içinde değişebilir.</strong> 
-                                Yeni araştırmalar mevcut bulguları güncelleyebilir.
-                            </li>
-                            <li>
-                                <strong>Her makale eşit kalitede değildir.</strong> 
-                                Atıf sayısı ve yayın tarihi gibi kalite göstergelerini göz önünde bulunduruyoruz.
-                            </li>
-                            <li>
-                                <strong>Özet, orijinal makalenin yerini tutmaz.</strong> 
-                                Detaylı bilgi için kaynak makalelere bakmanızı öneririz.
-                            </li>
-                        </ul>
-                    </div>
-                </section>
-
-                <section style="margin-bottom: 50px;">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 18px; color: var(--accent-blue);">
-                        🎯 Kimler İçin?
-                    </h2>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-                        <div style="padding: 20px; background: var(--bg-card); border-radius: 12px;">
-                            <div style="font-size: 2rem; margin-bottom: 10px;">🎓</div>
-                            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Öğrenciler</h3>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                                Ödev ve projeler için güvenilir kaynak bulun
-                            </p>
-                        </div>
-                        <div style="padding: 20px; background: var(--bg-card); border-radius: 12px;">
-                            <div style="font-size: 2rem; margin-bottom: 10px;">👨‍🏫</div>
-                            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Eğitimciler</h3>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                                Ders içerikleri için güncel bilimsel bilgi edinin
-                            </p>
-                        </div>
-                        <div style="padding: 20px; background: var(--bg-card); border-radius: 12px;">
-                            <div style="font-size: 2rem; margin-bottom: 10px;">🔬</div>
-                            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Meraklılar</h3>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                                Bilime meraklı herkes için erişilebilir bilgi
-                            </p>
-                        </div>
-                        <div style="padding: 20px; background: var(--bg-card); border-radius: 12px;">
-                            <div style="font-size: 2rem; margin-bottom: 10px;">📰</div>
-                            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Gazeteciler</h3>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                                Bilim haberleri için doğru kaynaklara ulaşın
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                <section>
-                    <h2 style="font-size: 1.5rem; margin-bottom: 18px; color: var(--accent-blue);">
-                        📬 İletişim
-                    </h2>
-                    <p style="color: var(--text-secondary); line-height: 1.9;">
-                        Sorularınız, önerileriniz veya geri bildirimleriniz için: 
-                        <a href="/cdn-cgi/l/email-protection#0f666169604f6e646e6b6a6266647c607d7a216c6062" style="color: var(--accent-blue); text-decoration: none; font-weight: 600;">
-                            <span class="__cf_email__" data-cfemail="dfb6b1b9b09fbeb4bebbbab2b6b4acb0adaaf1bcb0b2">[email&#160;protected]</span>
-                        </a>
-                    </p>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 20px;">
-                        Bu proje açık kaynaklı bir girişimdir ve sürekli geliştirilmektedir.
-                    </p>
-                </section>
-
+            <div class="summary-section" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.05)); border-color: rgba(245, 158, 11, 0.2);">
+                <div class="summary-header">
+                    <span>⚠️</span>
+                    <h2>Önemli Uyarı</h2>
+                </div>
+                <div class="summary-text">
+                    Bu platform sadece bilgilendirme amaçlıdır. Sağlık, hukuk veya finans konularındaki kararlarınız için mutlaka bir uzmana danışın. 
+                    AI yanıtları her zaman %100 doğru olmayabilir - kaynak makaleleri kontrol etmenizi öneririz.
+                </div>
             </div>
         </div>
     </main>
 
     <footer class="footer">
         <div class="container">
-            <p>© 
+            <p>© 2025 AkademikSoru - Bilimsel Araştırma Platformu</p>
+        </div>
+    </footer>
+</body>
+</html>
