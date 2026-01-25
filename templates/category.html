@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ category.name }} - AkademikSoru</title>
+    <meta name="description" content="{{ category.name }} kategorisindeki bilimsel araştırmalar ve sorular.">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">
+                <span class="logo-icon">🔬</span>
+                <span class="logo-text">AkademikSoru</span>
+            </a>
+            <nav class="nav">
+                <a href="/">Ana Sayfa</a>
+                {% if user %}
+                <div class="user-menu">
+                    <a href="/profile" class="user-name">👤 {{ user.display_name or user.username }}</a>
+                    <a href="/logout" class="btn-logout">Çıkış</a>
+                </div>
+                {% else %}
+                <a href="/login" class="btn-login">Giriş Yap</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="category-page" style="padding: 60px 0;">
+        <div class="container">
+            <div class="category-header" style="margin-bottom: 40px;">
+                <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 16px;">
+                    <span style="font-size: 3rem;">{{ category.icon }}</span>
+                    <h1 style="font-size: 2.5rem;">{{ category.name }}</h1>
+                </div>
+                
+                {% if user %}
+                <button class="btn-follow-large {% if is_following %}following{% endif %}" 
+                        onclick="toggleFollow('{{ category.name }}', this)"
+                        style="padding: 12px 24px; font-size: 1rem;">
+                    {% if is_following %}
+                    ✓ Takip Ediyorsun
+                    {% else %}
+                    + Bu Konuyu Takip Et
+                    {% endif %}
+                </button>
+                {% else %}
+                <p style="color: var(--text-secondary);">
+                    <a href="/login" style="color: var(--accent-primary);">Giriş yap</a> ve bu konuyu takip et!
+                </p>
+                {% endif %}
+            </div>
+
+            <section>
+                <h2 style="font-size: 1.4rem; margin-bottom: 20px;">Bu Kategorideki Sorular</h2>
+                
+                {% if questions %}
+                <div class="questions-list" style="display: flex; flex-direction: column; gap: 16px;">
+                    {% for q in questions %}
+                    <div class="question-item" style="padding: 24px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; cursor: pointer;" onclick="searchQuestion('{{ q.question }}')">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <span style="font-size: 1.5rem;">{{ q.icon }}</span>
+                            <span class="evidence-badge evidence-{{ q.evidence_level }}" style="padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">
+                                {% if q.evidence_level == 'strong' %}
+                                🟢 Güçlü Kanıt
+                                {% elif q.evidence_level == 'moderate' %}
+                                🟡 Orta Kanıt
+                                {% else %}
+                                🔴 Sınırlı Veri
+                                {% endif %}
+                            </span>
+                        </div>
+                        <h3 style="font-size: 1.1rem; margin-bottom: 8px;">{{ q.question }}</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.95rem;">{{ q.preview }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <p>Bu kategoride henüz soru yok.</p>
+                    <a href="/" class="btn-primary">Araştırmaya Başla</a>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 AkademikSoru</p>
+        </div>
+    </footer>
+
+    <script>
+        function searchQuestion(question) {
+            sessionStorage.setItem('autoSearch', question);
+            window.location.href = '/';
+        }
+
+        async function toggleFollow(category, btn) {
+            const isFollowing = btn.classList.contains('following');
+            
+            const formData = new FormData();
+            formData.append('category', category);
+            
+            try {
+                const response = await fetch('/api/topics/' + (isFollowing ? 'unfollow' : 'follow'), {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    btn.classList.toggle('following');
+                    btn.textContent = data.following ? '✓ Takip Ediyorsun' : '+ Bu Konuyu Takip Et';
+                }
+            } catch (error) {
+                alert('İşlem başarısız.');
+            }
+        }
+    </script>
+</body>
+</html>

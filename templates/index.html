@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AkademikSoru - Bilim Ne Diyor?</title>
-    <meta name="description" content="Merak ettiğiniz her sorunun bilimsel yanıtını bulun. Akademik makaleleri tarayıp size özetliyoruz.">
+    <meta name="description" content="Merak ettiğiniz her sorunun bilimsel yanıtını bulun.">
     <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -18,78 +17,56 @@
             </a>
             <nav class="nav">
                 <a href="/about">Hakkında</a>
+                {% if user %}
+                <div class="user-menu">
+                    <a href="/profile" class="user-name">👤 {{ user.display_name or user.username }}</a>
+                    <a href="/logout" class="btn-logout">Çıkış</a>
+                </div>
+                {% else %}
+                <a href="/login" class="btn-login">Giriş Yap</a>
+                {% endif %}
             </nav>
         </div>
     </header>
 
     <main class="hero">
         <div class="container">
-            <div class="hero-badge">
-                <span>📚</span> Bilimsel Literatür Araştırma
-            </div>
+            <div class="hero-badge"><span>📚</span> Bilimsel Literatür Araştırma</div>
             
-            <h1 class="hero-title">
-                Merak Et,<br>
-                <span class="gradient-text">Bilim Ne Diyor Öğren</span>
-            </h1>
+            <h1 class="hero-title">Merak Et,<br><span class="gradient-text">Bilim Ne Diyor Öğren</span></h1>
             
-            <p class="hero-subtitle">
-                Akademik makaleleri tarayıp size anlaşılır bir dille özetliyoruz. 
-                Kaynaklarıyla birlikte, objektif, bilimsel yanıtlar.
-            </p>
+            <p class="hero-subtitle">Akademik makaleleri tarayıp size anlaşılır bir dille özetliyoruz.</p>
 
             <form id="questionForm" class="search-form">
                 <div class="search-box">
-                    <textarea 
-                        id="questionInput" 
-                        name="question" 
-                        placeholder="Örnek: Kahve içmek sağlığa zararlı mı?"
-                        maxlength="500"
-                        rows="3"
-                        required
-                    ></textarea>
+                    <textarea id="questionInput" name="question" placeholder="Örnek: Kahve içmek sağlığa zararlı mı?" maxlength="500" rows="3" required></textarea>
                     <div class="char-count"><span id="charCount">0</span>/500</div>
                 </div>
                 
-                <!-- FAZ 1: Anlatım Seviyesi Seçimi -->
                 <div class="explanation-level-selector">
                     <label class="level-label">Anlatım Seviyesi:</label>
                     <div class="level-options">
                         <label class="level-option">
                             <input type="radio" name="level" value="simple" />
-                            <span class="level-card">
-                                <span class="level-icon">🧒</span>
-                                <span class="level-name">Basit</span>
-                            </span>
+                            <span class="level-card"><span class="level-icon">🧒</span><span class="level-name">Basit</span></span>
                         </label>
                         <label class="level-option">
                             <input type="radio" name="level" value="medium" checked />
-                            <span class="level-card">
-                                <span class="level-icon">🧑</span>
-                                <span class="level-name">Orta</span>
-                            </span>
+                            <span class="level-card"><span class="level-icon">🧑</span><span class="level-name">Orta</span></span>
                         </label>
                         <label class="level-option">
                             <input type="radio" name="level" value="academic" />
-                            <span class="level-card">
-                                <span class="level-icon">🎓</span>
-                                <span class="level-name">Akademik</span>
-                            </span>
+                            <span class="level-card"><span class="level-icon">🎓</span><span class="level-name">Akademik</span></span>
                         </label>
                     </div>
                 </div>
                 
-                <button type="submit" class="btn-search" id="searchBtn">
-                    <span class="btn-icon">🔍</span>
-                    <span class="btn-text">Araştır</span>
-                </button>
+                <button type="submit" class="btn-search"><span class="btn-icon">🔍</span><span class="btn-text">Araştır</span></button>
             </form>
 
             <div id="loadingState" class="loading-state" style="display: none;">
                 <div class="loading-spinner"></div>
-                <div class="loading-text">
-                    <span id="loadingStep">Araştırma yapılıyor...</span>
-                </div>
+                <div class="loading-text"><span id="loadingStep">Araştırma yapılıyor...</span></div>
                 <div class="loading-steps">
                     <div class="step" id="step1">🧠 Soru analiz ediliyor</div>
                     <div class="step" id="step2">📖 Akademik makaleler taranıyor</div>
@@ -106,43 +83,37 @@
         </div>
     </main>
 
-    <!-- FAZ 1: Kategoriler -->
     <section class="categories-section">
         <div class="container">
             <h2 class="section-title">Konular</h2>
             <div class="categories-grid">
-                {% for category in categories %}
-                <a href="/category/{{ category.name }}" class="category-card" style="border-color: {{ category.color }};">
-                    <span class="category-icon">{{ category.icon }}</span>
-                    <span class="category-name">{{ category.name }}</span>
+                {% for cat in categories %}
+                <a href="/category/{{ cat.name }}" class="category-card" style="border-color: {{ cat.color }};">
+                    <span class="category-icon">{{ cat.icon }}</span>
+                    <span class="category-name">{{ cat.name }}</span>
                 </a>
                 {% endfor %}
             </div>
         </div>
     </section>
 
-    <!-- FAZ 1: Popüler Sorular -->
     <section class="popular-questions-section">
         <div class="container">
             <h2 class="section-title">Bugün En Çok Merak Edilenler</h2>
             <div class="questions-grid">
                 {% for q in popular_questions %}
-                <div class="question-card" onclick="fillQuestion('{{ q.question }}')">
+                <div class="question-card" onclick="fillQuestion('{{ q.question_text or q.question }}')">
                     <div class="question-header">
-                        <span class="question-icon">{{ q.icon }}</span>
-                        <span class="question-category">{{ q.category }}</span>
+                        <span class="question-icon">{{ q.icon or '❓' }}</span>
+                        <span class="question-category">{{ q.category or '' }}</span>
                     </div>
-                    <h3 class="question-title">{{ q.question }}</h3>
-                    <p class="question-preview">{{ q.preview }}</p>
+                    <h3 class="question-title">{{ q.question_text or q.question }}</h3>
+                    <p class="question-preview">{{ q.preview or '' }}</p>
                     <div class="question-footer">
-                        <span class="evidence-badge evidence-{{ q.evidence_level }}">
-                            {% if q.evidence_level == 'strong' %}
-                                🟢 Güçlü Kanıt
-                            {% elif q.evidence_level == 'moderate' %}
-                                🟡 Orta Kanıt
-                            {% else %}
-                                🔴 Sınırlı Veri
-                            {% endif %}
+                        <span class="evidence-badge evidence-{{ q.evidence_level or 'moderate' }}">
+                            {% if q.evidence_level == 'strong' %}🟢 Güçlü Kanıt
+                            {% elif q.evidence_level == 'moderate' %}🟡 Orta Kanıt
+                            {% else %}🔴 Sınırlı Veri{% endif %}
                         </span>
                         <span class="question-action">Araştır →</span>
                     </div>
@@ -176,19 +147,14 @@
 
     <section class="disclaimer">
         <div class="container">
-            <p>
-                <strong>⚠️ Önemli:</strong> Bu platform tıbbi/bilimsel tavsiye vermez. 
-                Sadece akademik literatürü özetler. Sağlık sorunlarınız için mutlaka doktorunuza danışın.
-            </p>
+            <p><strong>⚠️ Önemli:</strong> Bu platform tıbbi/bilimsel tavsiye vermez. Sağlık sorunlarınız için doktorunuza danışın.</p>
         </div>
     </section>
 
     <footer class="footer">
         <div class="container">
-            <p>© 2026 AkademikSoru - Bilimsel Literatür Araştırma Platformu</p>
-            <div class="footer-links">
-                <a href="/about">Hakkında</a>
-            </div>
+            <p>© 2026 AkademikSoru</p>
+            <div class="footer-links"><a href="/about">Hakkında</a></div>
         </div>
     </footer>
 
@@ -199,65 +165,57 @@
         const loadingState = document.getElementById('loadingState');
         const errorState = document.getElementById('errorState');
 
-        input.addEventListener('input', () => {
-            charCount.textContent = input.value.length;
-        });
+        // Auto-search from profile
+        const autoSearch = sessionStorage.getItem('autoSearch');
+        if (autoSearch) {
+            sessionStorage.removeItem('autoSearch');
+            input.value = autoSearch;
+            charCount.textContent = autoSearch.length;
+            setTimeout(() => form.dispatchEvent(new Event('submit')), 500);
+        }
+
+        input.addEventListener('input', () => charCount.textContent = input.value.length);
 
         function fillQuestion(text) {
             input.value = text;
             charCount.textContent = text.length;
             input.focus();
-            // Scroll to form
             form.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const question = input.value.trim();
             if (!question || question.length < 10) {
                 showError('Soru en az 10 karakter olmalı.');
                 return;
             }
-
             const level = document.querySelector('input[name="level"]:checked').value;
-
             form.style.display = 'none';
             loadingState.style.display = 'block';
             errorState.style.display = 'none';
-
-            animateLoadingSteps();
+            animateSteps();
 
             try {
                 const formData = new FormData();
                 formData.append('question', question);
                 formData.append('level', level);
-
-                const response = await fetch('/api/research', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Bir hata oluştu');
-                }
-
+                const r = await fetch('/api/research', {method: 'POST', body: formData});
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.error || 'Bir hata oluştu');
                 sessionStorage.setItem('researchResult', JSON.stringify(data));
                 sessionStorage.setItem('originalQuestion', question);
                 window.location.href = '/result';
-
-            } catch (error) {
-                showError(error.message);
+            } catch (err) {
+                showError(err.message);
             }
         });
 
-        function showError(message) {
+        function showError(msg) {
             form.style.display = 'block';
             loadingState.style.display = 'none';
             errorState.style.display = 'flex';
-            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorMessage').textContent = msg;
         }
 
         function resetForm() {
@@ -266,29 +224,17 @@
             errorState.style.display = 'none';
         }
 
-        function animateLoadingSteps() {
+        function animateSteps() {
             const steps = ['step1', 'step2', 'step3', 'step4'];
-            const messages = [
-                'Soru analiz ediliyor...',
-                'Akademik makaleler taranıyor...',
-                'Bulgular sentezleniyor...',
-                'Özet hazırlanıyor...'
-            ];
-            
-            let currentStep = 0;
-            
-            const interval = setInterval(() => {
-                if (currentStep > 0) {
-                    document.getElementById(steps[currentStep - 1]).classList.add('done');
-                }
-                
-                if (currentStep < steps.length) {
-                    document.getElementById(steps[currentStep]).classList.add('active');
-                    document.getElementById('loadingStep').textContent = messages[currentStep];
-                    currentStep++;
-                } else {
-                    clearInterval(interval);
-                }
+            const msgs = ['Soru analiz ediliyor...', 'Makaleler taranıyor...', 'Bulgular sentezleniyor...', 'Özet hazırlanıyor...'];
+            let i = 0;
+            const int = setInterval(() => {
+                if (i > 0) document.getElementById(steps[i-1]).classList.add('done');
+                if (i < steps.length) {
+                    document.getElementById(steps[i]).classList.add('active');
+                    document.getElementById('loadingStep').textContent = msgs[i];
+                    i++;
+                } else clearInterval(int);
             }, 2500);
         }
     </script>
