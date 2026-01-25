@@ -24,9 +24,8 @@ from database import (
     get_trending_questions, get_user_stats, get_search_history
 )
 
-# API Keys - Claude API kullanacağız
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")  # Fallback
+# API Keys
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
 SEMANTIC_SCHOLAR_API = "https://api.semanticscholar.org/graph/v1"
 
@@ -94,43 +93,7 @@ def detect_category(q: str) -> str:
     if any(w in q for w in ["eğitim", "öğrenme"]): return "Eğitim"
     return "Sağlık"
 
-async def call_claude(messages: list, max_tokens: int = 4096) -> str:
-    """Claude API - GPT-4'ten çok daha iyi Türkçe ve anlam analizi"""
-    if not ANTHROPIC_API_KEY:
-        # Fallback to OpenAI if no Claude key
-        return await call_gpt(messages, max_tokens)
-    
-    async with httpx.AsyncClient(timeout=90.0) as client:
-        try:
-            r = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
-                },
-                json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": max_tokens,
-                    "temperature": 0.3,
-                    "messages": messages
-                }
-            )
-            
-            if r.status_code == 200:
-                data = r.json()
-                content = data.get("content", [])
-                if content and len(content) > 0:
-                    return content[0].get("text", "")
-            else:
-                print(f"Claude API Error: {r.status_code} - {r.text}")
-                # Fallback to OpenAI
-                return await call_gpt(messages, max_tokens)
-        except Exception as e:
-            print(f"Claude Error: {e}")
-            return await call_gpt(messages, max_tokens)
-
-async def call_gpt(messages: list, max_tokens: int = 2000) -> str:
+async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-4o") -> str:
     """Fallback: OpenAI GPT"""
     if not OPENAI_API_KEY: return ""
     async with httpx.AsyncClient(timeout=60.0) as client:
@@ -182,7 +145,7 @@ JSON formatında yanıt ver:
     "reasoning": "Neden bu sorguları seçtin - kısaca"
 }}'''
     
-    result = await call_claude([{"role": "user", "content": prompt}], 800)
+    result = await call_gpt([{"role": "user", "content": prompt}], 800, model="gpt-4o")
     try:
         # JSON çıkar
         m = re.search(r'\{.*\}', result, re.DOTALL)
@@ -228,7 +191,7 @@ async def check_paper_relevance(question: str, paper: dict) -> dict:
     if not abstract or len(abstract) < 50:
         return {"score": 25, "reason": "Özet eksik veya çok kısa"}
     
-    # Claude ile anlamsal relevance check
+    # GPT-4o ile anlamsal relevance check
     prompt = f'''SORU: "{question}"
 
 MAKALE:
@@ -249,7 +212,7 @@ SKORLAMA KRİTERLERİ:
 JSON formatında SADECE şu çıktıyı ver:
 {{"score": 0-100, "reason": "Kısa açıklama (max 20 kelime)"}}'''
     
-    result = await call_claude([{"role": "user", "content": prompt}], 200)
+    result = await call_gpt([{"role": "user", "content": prompt}], 200, model="gpt-4o")
     try:
         m = re.search(r'\{.*\}', result, re.DOTALL)
         if m:
@@ -359,7 +322,7 @@ async def search_papers(question: str) -> list:
     return filtered_papers[:25]
 
 async def synthesize_results(question: str, papers: list, level: str = "medium") -> dict:
-    """Claude ile sentez - çok daha kaliteli"""
+    """GPT-4o ile sentez - Maliyet optimize edildi"""
     levels = {
         "simple": "10 yaşındaki bir çocuğa anlatır gibi, ÇOK BASİT dil kullan. Teknik terim kullanma.", 
         "medium": "Lise mezunu bir yetişkine anlatır gibi, ANLAŞILIR dil kullan. Gerekirse basit terimlerle açıkla.", 
@@ -415,7 +378,7 @@ JSON formatında yanıt ver (Türkçe karakterler düzgün kullan):
     "related_questions": ["İlgili soru 1", "İlgili soru 2", "İlgili soru 3"]
 }}'''
     
-    result = await call_claude([{"role": "user", "content": prompt}], 4096)
+    result = await call_gpt([{"role": "user", "content": prompt}], 4096, model="gpt-4o")
     try:
         m = re.search(r'\{.*\}', result, re.DOTALL)
         if m: 
@@ -441,7 +404,7 @@ JSON formatında yanıt ver (Türkçe karakterler düzgün kullan):
     }
 
 async def analyze_paper_deeply(paper: dict, question: str) -> dict:
-    """Claude ile derin makale analizi - İngilizce içeriği Türkçe'ye çevir"""
+    """GPT-4o ile derin makale analizi - İngilizce içeriği Türkçe'ye çevir"""
     title = paper.get("title", "")
     abstract = paper.get("abstract", "") or ""
     
@@ -487,7 +450,7 @@ JSON formatında yanıt ver:
     "practical_takeaway": "Peki ne yapmalıyız? (1-2 cümle PRATİK öneri)"
 }}'''
     
-    result = await call_claude([{"role": "user", "content": prompt}], 2000)
+    result = await call_gpt([{"role": "user", "content": prompt}], 2000, model="gpt-4o")
     try:
         m = re.search(r'\{.*\}', result, re.DOTALL)
         if m:
