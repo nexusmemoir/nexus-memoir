@@ -93,18 +93,64 @@ def detect_category(q: str) -> str:
     if any(w in q for w in ["eğitim", "öğrenme"]): return "Eğitim"
     return "Sağlık"
 
-async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-4o") -> str:
-    """Fallback: OpenAI GPT"""
-    if not OPENAI_API_KEY: return ""
-    async with httpx.AsyncClient(timeout=60.0) as client:
+async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-mini") -> str:
+    """
+    GPT-5-mini için Responses API kullanan yeni çekirdek çağrı fonksiyonu.
+    app.py yapısını bozmadan sadece motoru değiştirir.
+    """
+    if not OPENAI_API_KEY:
+        return ""
+
+    async with httpx.AsyncClient(timeout=90.0) as client:
         try:
-            r = await client.post("https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "gpt-4o-mini", "messages": messages, "max_tokens": max_tokens, "temperature": 0.3})
-            return r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+            # Son mesajı al (senin kodunda hep user prompt burada)
+            user_message = messages[-1]["content"]
+
+            payload = {
+                "model": model,
+                "input": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": user_message
+                            }
+                        ]
+                    }
+                ],
+                "max_output_tokens": max_tokens,
+                "temperature": 0.3
+            }
+
+            response = await client.post(
+                "https://api.openai.com/v1/responses",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json=payload
+            )
+
+            if response.status_code != 200:
+                print(f"GPT-5 API Error {response.status_code}: {response.text}")
+                return ""
+
+            data = response.json()
+
+            # Responses API çıktısını güvenli şekilde topla
+            output_texts = []
+            for item in data.get("output", []):
+                for content in item.get("content", []):
+                    if content.get("type") == "output_text":
+                        output_texts.append(content.get("text", ""))
+
+            return "\n".join(output_texts).strip()
+
         except Exception as e:
-            print(f"GPT Error: {e}")
+            print(f"GPT-5 Error: {e}")
             return ""
+
 
 async def generate_search_queries(question: str) -> list:
     """Gelişmiş sorgu üretimi - Claude ile çok daha iyi"""
@@ -145,7 +191,7 @@ JSON formatında yanıt ver:
     "reasoning": "Neden bu sorguları seçtin - kısaca"
 }}'''
     
-    result = await call_gpt([{"role": "user", "content": prompt}], 800, model="gpt-4o")
+    result = await call_gpt([{"role": "user", "content": prompt}], 800, model="gpt-5-mini")
     try:
         # JSON çıkar
         m = re.search(r'\{.*\}', result, re.DOTALL)
@@ -212,7 +258,7 @@ SKORLAMA KRİTERLERİ:
 JSON formatında SADECE şu çıktıyı ver:
 {{"score": 0-100, "reason": "Kısa açıklama (max 20 kelime)"}}'''
     
-    result = await call_gpt([{"role": "user", "content": prompt}], 200, model="gpt-4o")
+    result = await call_gpt([{"role": "user", "content": prompt}], 200, model="gpt-5-mini")
     try:
         m = re.search(r'\{.*\}', result, re.DOTALL)
         if m:
@@ -243,7 +289,7 @@ async def search_semantic_scholar(query: str, limit: int = 20) -> list:
                 params={
                     "query": query,
                     "limit": limit,
-                    "fields": "title,abstract,year,citationCount,authors,url,venue,openAccessPdf,publicationTypes"
+                    "fields": "paperId,title,abstract,year,citationCount,authors,url,venue,openAccessPdf,publicationTypes"
                 }
             )
             if r.status_code == 200:
@@ -307,7 +353,7 @@ async def search_papers(question: str) -> list:
         year = p.get("year", 2000)
         
         # Recency bonus (son 5 yıl)
-        current_year = 2025
+        current_year = datetime.now().year
         recency_bonus = max(0, 10 - (current_year - year)) if year >= 2020 else 0
         
         # Kombine skor: %60 relevance, %30 citations, %10 recency
@@ -378,7 +424,7 @@ JSON formatında yanıt ver (Türkçe karakterler düzgün kullan):
     "related_questions": ["İlgili soru 1", "İlgili soru 2", "İlgili soru 3"]
 }}'''
     
-    result = await call_gpt([{"role": "user", "content": prompt}], 4096, model="gpt-4o")
+    result = await call_gpt([{"role": "user", "content": prompt}], 4096, model="gpt-5-mini")
     try:
         m = re.search(r'\{.*\}', result, re.DOTALL)
         if m: 
@@ -450,7 +496,7 @@ JSON formatında yanıt ver:
     "practical_takeaway": "Peki ne yapmalıyız? (1-2 cümle PRATİK öneri)"
 }}'''
     
-    result = await call_gpt([{"role": "user", "content": prompt}], 2000, model="gpt-4o")
+    result = await call_gpt([{"role": "user", "content": prompt}], 2000, model="gpt-5-mini")
     try:
         m = re.search(r'\{.*\}', result, re.DOTALL)
         if m:
@@ -601,6 +647,34 @@ async def api_login(
         max_age=30*24*60*60
     )
     return response
+
+@app.get("/api/health/openai")
+async def api_health_openai():
+    """
+    OpenAI bağlantısı + model erişimi test endpoint'i.
+    GET /api/health/openai
+    """
+    if not OPENAI_API_KEY:
+        return JSONResponse({"ok": False, "error": "OPENAI_API_KEY boş"}, status_code=500)
+
+    test_prompt = "Sadece şu kelimeyi döndür: OK"
+
+    try:
+        out = await call_gpt(
+            [{"role": "user", "content": test_prompt}],
+            max_tokens=20,
+            model="gpt-5-mini"
+        )
+        out_clean = (out or "").strip()
+
+        return JSONResponse({
+            "ok": out_clean.upper().startswith("OK"),
+            "model": "gpt-5-mini",
+            "output": out_clean[:200]
+        })
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
 
 # RESEARCH API
 @app.post("/api/research")
