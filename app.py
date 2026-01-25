@@ -93,35 +93,29 @@ def detect_category(q: str) -> str:
     if any(w in q for w in ["eğitim", "öğrenme"]): return "Eğitim"
     return "Sağlık"
 
-async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
-    """
-    GPT-5-mini için Responses API - DÜZELTİLMİŞ v2
-    """
+async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-mini") -> str:
+    """OpenAI Responses API (gpt-5-mini) - sağlam metin çıkarma"""
     if not OPENAI_API_KEY:
-        print("[GPT] ❌ API Key yok!")
         return ""
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         try:
+            user_message = messages[-1]["content"]
+
             payload = {
-                "model": "gpt-5-mini",
+                "model": model,
                 "input": [
                     {
                         "role": "user",
                         "content": [
-                            {
-                                "type": "input_text",
-                                "text": prompt
-                            }
+                            {"type": "input_text", "text": user_message}
                         ]
                     }
                 ],
                 "max_output_tokens": max_tokens
             }
 
-            print(f"[GPT] 📤 İstek gönderiliyor... (max_tokens: {max_tokens})")
-            
-            response = await client.post(
+            r = await client.post(
                 "https://api.openai.com/v1/responses",
                 headers={
                     "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -130,48 +124,40 @@ async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
                 json=payload
             )
 
-            if response.status_code != 200:
-                print(f"[GPT] ❌ API Error {response.status_code}: {response.text[:300]}")
+            if r.status_code != 200:
+                print(f"[GPT] ❌ API Error {r.status_code}: {r.text}")
                 return ""
 
-            data = response.json()
-            
-            # ÖNCE: Üst seviye "text" field'ını kontrol et
-            if data.get("text"):
-                result = data["text"].strip()
-                print(f"[GPT] ✅ Text field'dan yanıt alındı ({len(result)} karakter)")
-                return result
-            
-            # SONRA: Output array'ini kontrol et
-            output_texts = []
+            data = r.json()
+
+            # 1) Bazı yanıtlar direkt output_text döndürebilir
+            ot = data.get("output_text")
+            if isinstance(ot, str) and ot.strip():
+                return ot.strip()
+
+            # 2) Standart: output -> content -> output_text/summary_text
+            texts = []
             for item in data.get("output", []):
-                # Her item'ın content'ini kontrol et
-                for content in item.get("content", []):
-                    if content.get("type") == "output_text":
-                        text = content.get("text", "")
-                        if text:
-                            output_texts.append(text)
-            
-            if output_texts:
-                result = "\n".join(output_texts).strip()
-                print(f"[GPT] ✅ Output array'den yanıt alındı ({len(result)} karakter)")
+                for c in item.get("content", []) or []:
+                    ctype = c.get("type")
+                    if ctype in ("output_text", "summary_text"):
+                        t = c.get("text")
+                        if isinstance(t, str) and t:
+                            texts.append(t)
+
+            result = "\n".join(texts).strip()
+            if result:
                 return result
-            
-            # Status incomplete ise hata ver
-            status = data.get("status", "")
-            if status == "incomplete":
-                reason = data.get("incomplete_details", {}).get("reason", "unknown")
-                print(f"[GPT] ⚠️ Response incomplete! Reason: {reason}")
-                print(f"[GPT] ⚠️ Max tokens çok düşük olabilir: {max_tokens}")
-            
-            print(f"[GPT] ⚠️ Boş yanıt! Status: {status}")
+
+            # 3) Son çare: response yapısı değiştiyse debug için kısa döküm
+            # (prod'da istersen kaldırabilirsin)
+            print("[GPT] ⚠️ Metin çıkarılamadı. Anahtarlar:", list(data.keys()))
             return ""
 
         except Exception as e:
-            print(f"[GPT] ❌ Exception: {str(e)[:200]}")
-            import traceback
-            print(f"[GPT] ❌ Traceback: {traceback.format_exc()[:300]}")
+            print(f"[GPT] ❌ Exception: {e}")
             return ""
+
 
 
 async def generate_search_queries(question: str) -> list:
@@ -310,28 +296,28 @@ def simple_relevance_check(question: str, title: str, abstract: str) -> dict:
     score = int((title_match * 60 + abstract_match * 40) * 100)
     return {"score": score, "reason": "Keyword match (fallback)"}
 
-async def search_semantic_scholar(query: str, limit: int = 25) -> list:
-    """Semantic Scholar arama"""
+async def search_semantic_scholar(query: str, limit: int = 20) -> list:
     async with httpx.AsyncClient(timeout=30.0) as client:
-        try:
-            print(f"[SS] Arama: '{query}'")
-            r = await client.get(
-                f"{SEMANTIC_SCHOLAR_API}/paper/search",
-                params={
-                    "query": query,
-                    "limit": limit,
-                    "fields": "paperId,title,abstract,year,citationCount,authors,url,venue,openAccessPdf,publicationTypes"
-                }
-            )
-            if r.status_code == 200:
-                data = r.json().get("data", [])
-                print(f"[SS] ✅ {len(data)} makale bulundu")
-                return data
-            else:
-                print(f"[SS] ❌ Hata: {r.status_code}")
-        except Exception as e:
-            print(f"[SS] ❌ Exception: {e}")
+        for attempt in range(3):
+            try:
+                r = await client.get(
+                    f"{SEMANTIC_SCHOLAR_API}/paper/search",
+                    params={
+                        "query": query,
+                        "limit": limit,
+                        "fields": "paperId,title,abstract,year,citationCount,authors,url,venue,openAccessPdf,publicationTypes"
+                    }
+                )
+                if r.status_code == 200:
+                    return r.json().get("data", [])
+                if r.status_code == 429:
+                    await asyncio.sleep(1.5 * (attempt + 1))
+                    continue
+            except Exception as e:
+                print(f"Semantic Scholar Error: {e}")
+                return []
     return []
+
 
 async def search_papers(question: str) -> list:
     """Gelişmiş makale arama"""
