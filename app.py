@@ -95,7 +95,7 @@ def detect_category(q: str) -> str:
 
 async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
     """
-    GPT-5-mini için Responses API - TEMPERATURE KALDIRILDI
+    GPT-5-mini için Responses API - DEBUG MOD
     """
     if not OPENAI_API_KEY:
         print("[GPT] ❌ API Key yok!")
@@ -117,7 +117,6 @@ async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
                     }
                 ],
                 "max_output_tokens": max_tokens
-                # temperature parametresi KALDIRILDI - GPT-5-mini desteklemiyor
             }
 
             print(f"[GPT] 📤 İstek gönderiliyor... (max_tokens: {max_tokens})")
@@ -132,10 +131,14 @@ async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
             )
 
             if response.status_code != 200:
-                print(f"[GPT] ❌ API Error {response.status_code}: {response.text[:200]}")
+                print(f"[GPT] ❌ API Error {response.status_code}: {response.text[:300]}")
                 return ""
 
             data = response.json()
+            
+            # DEBUG: Raw response yapısını göster
+            print(f"[GPT DEBUG] Response keys: {list(data.keys())}")
+            print(f"[GPT DEBUG] Full response: {json.dumps(data, indent=2)[:500]}")
 
             # Responses API çıktısını güvenli şekilde topla
             output_texts = []
@@ -149,7 +152,7 @@ async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
             result = "\n".join(output_texts).strip()
             
             if not result:
-                print("[GPT] ⚠️ Boş yanıt!")
+                print(f"[GPT] ⚠️ Boş yanıt! Output array length: {len(data.get('output', []))}")
                 return ""
             
             print(f"[GPT] ✅ Yanıt alındı ({len(result)} karakter)")
@@ -157,6 +160,8 @@ async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
 
         except Exception as e:
             print(f"[GPT] ❌ Exception: {str(e)[:200]}")
+            import traceback
+            print(f"[GPT] ❌ Traceback: {traceback.format_exc()[:300]}")
             return ""
 
 
