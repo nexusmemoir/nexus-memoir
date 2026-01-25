@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClaimCheck - İddia Kaynak Sorgulama</title>
-    <meta name="description" content="İddiaların kaynaklarını araştırın. Doğruluk hükmü vermeden, sadece kaynakları ve kronolojik izleri gösteriyoruz.">
+    <title>AkademikSoru - Bilim Ne Diyor?</title>
+    <meta name="description" content="Merak ettiğiniz her sorunun bilimsel yanıtını bulun. Akademik makaleleri tarayıp size özetliyoruz.">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="container">
             <a href="/" class="logo">
-                <span class="logo-icon">🔍</span>
-                <span class="logo-text">ClaimCheck</span>
+                <span class="logo-icon">🔬</span>
+                <span class="logo-text">AkademikSoru</span>
             </a>
             <nav class="nav">
                 <a href="/about">Hakkında</a>
@@ -23,30 +22,28 @@
         </div>
     </header>
 
-    <!-- Hero Section -->
     <main class="hero">
         <div class="container">
             <div class="hero-badge">
-                <span>📰</span> Kaynak Sorgulama Aracı
+                <span>📚</span> Bilimsel Literatür Araştırma
             </div>
             
             <h1 class="hero-title">
-                İddiayı Yaz,<br>
-                <span class="gradient-text">Kaynakları Bul</span>
+                Merak Et,<br>
+                <span class="gradient-text">Bilim Ne Diyor Öğren</span>
             </h1>
             
             <p class="hero-subtitle">
-                Doğruluk hükmü vermiyoruz. Sadece iddianın internette nerede, 
-                ne zaman ve hangi kaynaklarda geçtiğini gösteriyoruz.
+                Akademik makaleleri tarayıp size anlaşılır bir dille özetliyoruz. 
+                Kaynaklarıyla birlikte, objektif, bilimsel yanıtlar.
             </p>
 
-            <!-- Search Form -->
-            <form id="claimForm" class="search-form">
+            <form id="questionForm" class="search-form">
                 <div class="search-box">
                     <textarea 
-                        id="claimInput" 
-                        name="claim_text" 
-                        placeholder="Örnek: Mars'ta su bulundu, NASA açıkladı..."
+                        id="questionInput" 
+                        name="question" 
+                        placeholder="Örnek: Kahve içmek sağlığa zararlı mı?"
                         maxlength="500"
                         rows="3"
                         required
@@ -54,34 +51,25 @@
                     <div class="char-count"><span id="charCount">0</span>/500</div>
                 </div>
                 
-                <div class="search-options">
-                    <label class="option-item">
-                        <input type="checkbox" id="includeScholar" checked>
-                        <span>Akademik kaynakları da ara</span>
-                    </label>
-                </div>
-                
                 <button type="submit" class="btn-search" id="searchBtn">
                     <span class="btn-icon">🔍</span>
-                    <span class="btn-text">Kaynakları Ara</span>
+                    <span class="btn-text">Araştır</span>
                 </button>
             </form>
 
-            <!-- Loading State -->
             <div id="loadingState" class="loading-state" style="display: none;">
                 <div class="loading-spinner"></div>
                 <div class="loading-text">
-                    <span id="loadingStep">Kaynaklar aranıyor...</span>
+                    <span id="loadingStep">Araştırma yapılıyor...</span>
                 </div>
                 <div class="loading-steps">
-                    <div class="step" id="step1">📝 İddia analiz ediliyor</div>
-                    <div class="step" id="step2">📰 Haberler taranıyor</div>
-                    <div class="step" id="step3">📚 Akademik kaynaklar aranıyor</div>
+                    <div class="step" id="step1">🧠 Soru analiz ediliyor</div>
+                    <div class="step" id="step2">📖 Akademik makaleler taranıyor</div>
+                    <div class="step" id="step3">🔬 Bulgular analiz ediliyor</div>
                     <div class="step" id="step4">📊 Özet hazırlanıyor</div>
                 </div>
             </div>
 
-            <!-- Error State -->
             <div id="errorState" class="error-state" style="display: none;">
                 <span class="error-icon">⚠️</span>
                 <span id="errorMessage">Bir hata oluştu.</span>
@@ -90,54 +78,68 @@
         </div>
     </main>
 
-    <!-- Features Section -->
     <section class="features">
         <div class="container">
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon">🔍</div>
-                    <h3>Kaynak İzleme</h3>
-                    <p>İddianın geçtiği haber ve akademik kaynakları buluyoruz</p>
+                    <div class="feature-icon">📚</div>
+                    <h3>Akademik Kaynak</h3>
+                    <p>Binlerce bilimsel makaleyi tarayıp size en ilgililerini sunuyoruz</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📅</div>
-                    <h3>Kronoloji</h3>
-                    <p>Olayların zaman çizelgesini çıkarıyoruz</p>
+                    <div class="feature-icon">🎯</div>
+                    <h3>Anlaşılır Özet</h3>
+                    <p>Karmaşık akademik dili herkesin anlayabileceği hale getiriyoruz</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">⚖️</div>
-                    <h3>Tarafsız</h3>
-                    <p>Doğru/yanlış hükmü vermiyoruz, sadece kaynakları sunuyoruz</p>
+                    <h3>Objektif</h3>
+                    <p>Kesin hüküm vermiyoruz, bilimin ne dediğini gösteriyoruz</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Ad Space -->
-    <section class="ad-section">
+    <section class="examples">
         <div class="container">
-            <div class="ad-placeholder">
-                <!-- Google AdSense will go here -->
-                <span>Reklam Alanı</span>
+            <h2 style="text-align: center; margin-bottom: 30px; font-size: 1.8rem;">
+                💡 Örnek Sorular
+            </h2>
+            <div class="examples-grid">
+                <button class="example-card" onclick="fillQuestion(this.textContent)">
+                    Kahve içmek sağlığa zararlı mı?
+                </button>
+                <button class="example-card" onclick="fillQuestion(this.textContent)">
+                    Yemekleri tekrar ısıtmak zararlı mı?
+                </button>
+                <button class="example-card" onclick="fillQuestion(this.textContent)">
+                    Gece geç uyumak kilo aldırır mı?
+                </button>
+                <button class="example-card" onclick="fillQuestion(this.textContent)">
+                    C vitamini soğuk algınlığına iyi gelir mi?
+                </button>
+                <button class="example-card" onclick="fillQuestion(this.textContent)">
+                    Plastik şişeler kanser yapar mı?
+                </button>
+                <button class="example-card" onclick="fillQuestion(this.textContent)">
+                    Intermittent fasting işe yarıyor mu?
+                </button>
             </div>
         </div>
     </section>
 
-    <!-- Disclaimer -->
     <section class="disclaimer">
         <div class="container">
             <p>
-                <strong>⚠️ Önemli:</strong> Bu araç doğruluk hükmü vermez. 
-                Yalnızca çevrimiçi kaynaklarda iz sürer. 
-                Kaynaklar üçüncü taraf sitelerdir ve içeriklerinden sorumlu değiliz.
+                <strong>⚠️ Önemli:</strong> Bu platform tıbbi/bilimsel tavsiye vermez. 
+                Sadece akademik literatürü özetler. Sağlık sorunlarınız için mutlaka doktorunuza danışın.
             </p>
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>© 2026 ClaimCheck - Kaynak Sorgulama Aracı</p>
+            <p>© 2026 AkademikSoru - Bilimsel Literatür Araştırma Platformu</p>
             <div class="footer-links">
                 <a href="/about">Hakkında</a>
             </div>
@@ -145,43 +147,42 @@
     </footer>
 
     <script>
-        const form = document.getElementById('claimForm');
-        const input = document.getElementById('claimInput');
+        const form = document.getElementById('questionForm');
+        const input = document.getElementById('questionInput');
         const charCount = document.getElementById('charCount');
-        const searchBtn = document.getElementById('searchBtn');
         const loadingState = document.getElementById('loadingState');
         const errorState = document.getElementById('errorState');
 
-        // Character count
         input.addEventListener('input', () => {
             charCount.textContent = input.value.length;
         });
 
-        // Form submit
+        function fillQuestion(text) {
+            input.value = text;
+            charCount.textContent = text.length;
+            input.focus();
+        }
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const claimText = input.value.trim();
-            if (!claimText || claimText.length < 10) {
-                showError('İddia en az 10 karakter olmalı.');
+            const question = input.value.trim();
+            if (!question || question.length < 10) {
+                showError('Soru en az 10 karakter olmalı.');
                 return;
             }
 
-            // Show loading
             form.style.display = 'none';
             loadingState.style.display = 'block';
             errorState.style.display = 'none';
 
-            // Animate steps
             animateLoadingSteps();
 
             try {
                 const formData = new FormData();
-                formData.append('claim_text', claimText);
-                formData.append('lang', 'tr');
-                formData.append('include_scholar', document.getElementById('includeScholar').checked);
+                formData.append('question', question);
 
-                const response = await fetch('/api/claim', {
+                const response = await fetch('/api/research', {
                     method: 'POST',
                     body: formData
                 });
@@ -192,9 +193,8 @@
                     throw new Error(data.error || 'Bir hata oluştu');
                 }
 
-                // Store result and redirect
-                sessionStorage.setItem('claimResult', JSON.stringify(data));
-                sessionStorage.setItem('originalClaim', claimText);
+                sessionStorage.setItem('researchResult', JSON.stringify(data));
+                sessionStorage.setItem('originalQuestion', question);
                 window.location.href = '/result';
 
             } catch (error) {
@@ -218,9 +218,9 @@
         function animateLoadingSteps() {
             const steps = ['step1', 'step2', 'step3', 'step4'];
             const messages = [
-                'İddia analiz ediliyor...',
-                'Haberler taranıyor...',
-                'Akademik kaynaklar aranıyor...',
+                'Soru analiz ediliyor...',
+                'Akademik makaleler taranıyor...',
+                'Bulgular sentezleniyor...',
                 'Özet hazırlanıyor...'
             ];
             
@@ -238,7 +238,7 @@
                 } else {
                     clearInterval(interval);
                 }
-            }, 2000);
+            }, 2500);
         }
     </script>
 </body>

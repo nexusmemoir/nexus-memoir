@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Araştırma Sonuçları - AkademikSoru</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">
+                <span class="logo-icon">🔬</span>
+                <span class="logo-text">AkademikSoru</span>
+            </a>
+            <nav class="nav">
+                <a href="/" class="btn-new-search">+ Yeni Soru</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="result-page">
+        <div class="container">
+            
+            <div class="claim-box">
+                <div class="claim-label">Araştırılan Soru</div>
+                <h1 id="questionTitle" class="claim-text">Yükleniyor...</h1>
+            </div>
+
+            <section class="summary-section">
+                <h2>📋 Bilimsel Özet</h2>
+                <div id="summaryText" class="summary-content">
+                    Yükleniyor...
+                </div>
+                
+                <div id="consensusBox" class="consensus-box" style="display: none;">
+                    <strong>🎯 Bilimsel Konsensüs:</strong>
+                    <p id="consensusText"></p>
+                </div>
+            </section>
+
+            <section class="findings-section">
+                <h2>🔍 Ana Bulgular</h2>
+                <div id="keyFindingsList" class="findings-list"></div>
+            </section>
+
+            <div id="conflictsSection" class="conflicts-section" style="display: none;">
+                <h2>⚖️ Çelişkili Görüşler</h2>
+                <div id="conflictsList" class="conflicts-list"></div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="all">
+                    📚 Tüm Makaleler <span id="allCount" class="count">0</span>
+                </button>
+                <button class="tab" data-tab="recent">
+                    🆕 Son 5 Yıl <span id="recentCount" class="count">0</span>
+                </button>
+                <button class="tab" data-tab="cited">
+                    ⭐ Çok Atıf Alan <span id="citedCount" class="count">0</span>
+                </button>
+            </div>
+
+            <div id="allTab" class="tab-content active">
+                <div id="allPapers" class="sources-grid"></div>
+            </div>
+
+            <div id="recentTab" class="tab-content">
+                <div id="recentPapers" class="sources-grid"></div>
+            </div>
+
+            <div id="citedTab" class="tab-content">
+                <div id="citedPapers" class="sources-grid"></div>
+            </div>
+
+            <section class="metadata-section">
+                <div class="metadata-grid">
+                    <div class="metadata-card">
+                        <h3>🏷️ Bilimsel Terimler</h3>
+                        <div id="termsList" class="tags-list"></div>
+                    </div>
+                    <div class="metadata-card">
+                        <h3>🔬 Araştırma Alanları</h3>
+                        <div id="areasList" class="tags-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <div id="gapsSection" class="gaps-section" style="display: none;">
+                <h3>📌 Araştırma Boşlukları</h3>
+                <ul id="gapsList"></ul>
+            </div>
+
+            <section class="stats-section">
+                <h3>📊 Araştırma İstatistikleri</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-value" id="statTotal">0</span>
+                        <span class="stat-label">Toplam Makale</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statRecent">0</span>
+                        <span class="stat-label">2020+ Yayın</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statCited">0</span>
+                        <span class="stat-label">Yüksek Atıf</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statOpen">0</span>
+                        <span class="stat-label">Açık Erişim</span>
+                    </div>
+                </div>
+                <div id="qualityNote" class="quality-note"></div>
+            </section>
+
+            <div class="disclaimer result-disclaimer">
+                <p id="disclaimerText">
+                    <strong>⚠️ Önemli:</strong> Bu bir bilimsel literatür özetidir. 
+                    Tıbbi/kişisel tavsiye değildir. Sağlık kararlarınız için mutlaka uzmanınıza danışın.
+                </p>
+            </div>
+
+            <div class="new-search-box">
+                <a href="/" class="btn-search">🔍 Yeni Soru Sor</a>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 AkademikSoru - Bilimsel Literatür Araştırma</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const resultData = sessionStorage.getItem('researchResult');
+            
+            if (!resultData) {
+                window.location.href = '/';
+                return;
+            }
+
+            const data = JSON.parse(resultData);
+            renderResults(data);
+        });
+
+        function renderResults(data) {
+            document.getElementById('questionTitle').textContent = 
+                data.normalized_question || sessionStorage.getItem('originalQuestion');
+
+            const synthesis = data.synthesis || {};
+
+            // Summary
+            document.getElementById('summaryText').textContent = 
+                synthesis.summary || 'Özet oluşturulamadı.';
+
+            // Consensus
+            if (synthesis.consensus) {
+                document.getElementById('consensusBox').style.display = 'block';
+                document.getElementById('consensusText').textContent = synthesis.consensus;
+            }
+
+            // Key Findings
+            renderList(synthesis.key_findings || [], 'keyFindingsList', 'finding-item');
+
+            // Conflicts
+            if (synthesis.conflicting_views && synthesis.conflicting_views.length > 0) {
+                document.getElementById('conflictsSection').style.display = 'block';
+                renderList(synthesis.conflicting_views, 'conflictsList', 'conflict-item');
+            }
+
+            // Research Gaps
+            if (synthesis.research_gaps && synthesis.research_gaps.length > 0) {
+                document.getElementById('gapsSection').style.display = 'block';
+                renderList(synthesis.research_gaps, 'gapsList', 'gap-item', true);
+            }
+
+            // Papers
+            renderPapers(data.papers || [], 'allPapers');
+            renderPapers(data.recent_papers || [], 'recentPapers');
+            renderPapers(data.highly_cited || [], 'citedPapers');
+
+            // Counts
+            document.getElementById('allCount').textContent = (data.papers || []).length;
+            document.getElementById('recentCount').textContent = (data.recent_papers || []).length;
+            document.getElementById('citedCount').textContent = (data.highly_cited || []).length;
+
+            // Metadata
+            renderTags(data.scientific_terms || [], 'termsList');
+            renderTags(data.research_areas || [], 'areasList');
+
+            // Stats
+            const stats = data.stats || {};
+            document.getElementById('statTotal').textContent = stats.total_papers || 0;
+            document.getElementById('statRecent').textContent = stats.recent_count || 0;
+            document.getElementById('statCited').textContent = stats.highly_cited_count || 0;
+            document.getElementById('statOpen').textContent = stats.open_access_count || 0;
+
+            // Quality Note
+            if (synthesis.quality_note) {
+                document.getElementById('qualityNote').innerHTML = 
+                    `<strong>📌 Kalite Notu:</strong> ${synthesis.quality_note}`;
+            }
+
+            // Disclaimer
+            if (synthesis.disclaimer) {
+                document.getElementById('disclaimerText').innerHTML = 
+                    `<strong>⚠️ Önemli:</strong> ${synthesis.disclaimer}`;
+            }
+
+            setupTabs();
+        }
+
+        function renderList(items, containerId, className, isUl = false) {
+            const container = document.getElementById(containerId);
+            if (!items || items.length === 0) {
+                container.innerHTML = '<p class="empty-state">-</p>';
+                return;
+            }
+
+            let html = '';
+            items.forEach(item => {
+                if (isUl) {
+                    html += `<li class="${className}">${escapeHtml(item)}</li>`;
+                } else {
+                    html += `<div class="${className}">✓ ${escapeHtml(item)}</div>`;
+                }
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderPapers(papers, containerId) {
+            const container = document.getElementById(containerId);
+            
+            if (!papers || papers.length === 0) {
+                container.innerHTML = '<p class="empty-state">Makale bulunamadı.</p>';
+                return;
+            }
+
+            let html = '';
+            papers.forEach((paper, index) => {
+                const year = paper.year || 'N/A';
+                const citations = paper.citations || 0;
+                const openAccess = paper.open_access ? '🔓 Açık Erişim' : '';
+                const pdfLink = paper.pdf_url ? 
+                    `<a href="${paper.pdf_url}" target="_blank" class="pdf-link">📄 PDF</a>` : '';
+
+                html += `
+                    <div class="source-card paper-card">
+                        <div class="source-index">${index + 1}</div>
+                        <div class="source-content">
+                            <h4 class="source-title">${escapeHtml(paper.title)}</h4>
+                            <div class="source-meta">
+                                <span class="source-authors">${escapeHtml(paper.authors)}</span>
+                                <span class="source-year">${year}</span>
+                            </div>
+                            ${paper.venue ? `<div class="source-venue">${escapeHtml(paper.venue)}</div>` : ''}
+                            <div class="paper-stats">
+                                <span class="citation-count">📊 ${citations} atıf</span>
+                                ${openAccess ? `<span class="open-access">${openAccess}</span>` : ''}
+                            </div>
+                            ${paper.abstract ? `<div class="paper-abstract">${escapeHtml(paper.abstract)}</div>` : ''}
+                            <div class="paper-actions">
+                                <a href="${paper.url}" target="_blank" rel="noopener" class="paper-link">
+                                    Makaleyi Görüntüle →
+                                </a>
+                                ${pdfLink}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderTags(tags, containerId) {
+            const container = document.getElementById(containerId);
+            
+            if (!tags || tags.length === 0) {
+                container.innerHTML = '<span class="empty-state">-</span>';
+                return;
+            }
+
+            let html = '';
+            tags.forEach(tag => {
+                html += `<span class="keyword-tag">${escapeHtml(tag)}</span>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    const tabName = tab.dataset.tab;
+                    document.getElementById(tabName + 'Tab').classList.add('active');
+                });
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
