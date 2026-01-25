@@ -95,7 +95,7 @@ def detect_category(q: str) -> str:
 
 async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
     """
-    GPT-5-mini için Responses API - DÜZELTİLMİŞ
+    GPT-5-mini için Responses API - TEMPERATURE KALDIRILDI
     """
     if not OPENAI_API_KEY:
         print("[GPT] ❌ API Key yok!")
@@ -116,8 +116,8 @@ async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
                         ]
                     }
                 ],
-                "max_output_tokens": max_tokens,
-                "temperature": 0.3
+                "max_output_tokens": max_tokens
+                # temperature parametresi KALDIRILDI - GPT-5-mini desteklemiyor
             }
 
             print(f"[GPT] 📤 İstek gönderiliyor... (max_tokens: {max_tokens})")
