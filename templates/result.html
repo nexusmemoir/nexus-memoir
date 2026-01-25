@@ -91,6 +91,37 @@
                 </div>
             </section>
 
+            <!-- Stats (Debug) -->
+            <section class="stats-section" id="statsSection" style="display: none;">
+                <h3>📊 Arama İstatistikleri</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-value" id="statQueries">0</span>
+                        <span class="stat-label">Sorgu Üretildi</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statRawNews">0</span>
+                        <span class="stat-label">Ham Haber Bulundu</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statFiltered">0</span>
+                        <span class="stat-label">Alakalı Haber</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statAcademic">0</span>
+                        <span class="stat-label">Akademik Kaynak</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Queries Used (Collapsible) -->
+            <details class="queries-section">
+                <summary>🔍 Kullanılan Arama Sorguları</summary>
+                <div id="queriesList" class="queries-list">
+                    <!-- Queries will be inserted here -->
+                </div>
+            </details>
+
             <!-- Disclaimer -->
             <div class="disclaimer result-disclaimer">
                 <p>
@@ -164,6 +195,25 @@
 
             // Keywords
             renderKeywords(data.keywords || []);
+
+            // Stats
+            if (data.stats) {
+                document.getElementById('statsSection').style.display = 'block';
+                document.getElementById('statQueries').textContent = data.stats.total_queries || 0;
+                document.getElementById('statRawNews').textContent = data.stats.raw_news_found || 0;
+                document.getElementById('statFiltered').textContent = data.stats.filtered_news || 0;
+                document.getElementById('statAcademic').textContent = data.stats.academic_found || 0;
+            }
+
+            // Queries Used
+            if (data.queries_used && data.queries_used.length > 0) {
+                const queriesList = document.getElementById('queriesList');
+                let html = '';
+                data.queries_used.forEach(q => {
+                    html += `<span class="query-tag">${escapeHtml(q)}</span>`;
+                });
+                queriesList.innerHTML = html;
+            }
 
             // Setup tabs
             setupTabs();
