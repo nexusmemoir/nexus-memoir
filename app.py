@@ -93,28 +93,25 @@ def detect_category(q: str) -> str:
     if any(w in q for w in ["eğitim", "öğrenme"]): return "Eğitim"
     return "Sağlık"
 
-async def call_gpt(messages: str, max_tokens: int = 4096, model: str = "gpt-5-mini") -> str:
-    """OpenAI Responses API (gpt-5-mini) - sağlam metin çıkarma"""
+async def call_gpt(messages: str, max_tokens: int = 4096, model: str = "gpt-4.1-mini") -> str:
+    """OpenAI API - Chat Completions (daha güvenilir)"""
     if not OPENAI_API_KEY:
         return ""
 
     async with httpx.AsyncClient(timeout=90.0) as client:
         try:
+            # Chat Completions API kullan (daha stabil)
             payload = {
                 "model": model,
-                "input": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "input_text", "text": messages}
-                        ]
-                    }
+                "messages": [
+                    {"role": "user", "content": messages}
                 ],
-                "max_output_tokens": max_tokens
+                "max_tokens": max_tokens,
+                "temperature": 0.7
             }
 
             r = await client.post(
-                "https://api.openai.com/v1/responses",
+                "https://api.openai.com/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {OPENAI_API_KEY}",
                     "Content-Type": "application/json"
@@ -128,53 +125,20 @@ async def call_gpt(messages: str, max_tokens: int = 4096, model: str = "gpt-5-mi
 
             data = r.json()
             
-            # 1) EN ÖNCELİKLİ: Direkt "text" anahtarı (Responses API'nin ana çıktısı)
-            if "text" in data and isinstance(data["text"], str):
-                result = data["text"].strip()
-                if result:
-                    # Status kontrolü - incomplete ise uyar
-                    if data.get("status") == "incomplete":
-                        reason = data.get("incomplete_details", {}).get("reason", "unknown")
-                        print(f"[GPT] ⚠️ Yanıt incomplete (sebep: {reason}), kısmi sonuç döndürülüyor")
-                    return result
+            # Chat Completions yanıt yapısı
+            if "choices" in data and len(data["choices"]) > 0:
+                choice = data["choices"][0]
+                if "message" in choice and "content" in choice["message"]:
+                    content = choice["message"]["content"]
+                    if isinstance(content, str) and content.strip():
+                        # Finish reason kontrolü
+                        finish_reason = choice.get("finish_reason")
+                        if finish_reason == "length":
+                            print(f"[GPT] ⚠️ Yanıt max_tokens limitine ulaştı, kısmi sonuç")
+                        return content.strip()
             
-            # 2) output_text alternatifi
-            if "output_text" in data and isinstance(data["output_text"], str):
-                result = data["output_text"].strip()
-                if result:
-                    return result
-            
-            # 3) output array içinde content yapısı
-            if "output" in data and isinstance(data["output"], list):
-                texts = []
-                for item in data["output"]:
-                    if isinstance(item, dict) and "content" in item:
-                        content = item["content"]
-                        if isinstance(content, list):
-                            for c in content:
-                                if isinstance(c, dict):
-                                    ctype = c.get("type")
-                                    if ctype in ("output_text", "summary_text", "text"):
-                                        t = c.get("text", "")
-                                        if isinstance(t, str) and t.strip():
-                                            texts.append(t.strip())
-                
-                if texts:
-                    return "\n".join(texts)
-            
-            # 4) choices array (ChatCompletion benzeri)
-            if "choices" in data and isinstance(data["choices"], list):
-                for choice in data["choices"]:
-                    if isinstance(choice, dict) and "message" in choice:
-                        msg = choice["message"]
-                        if isinstance(msg, dict) and "content" in msg:
-                            content = msg["content"]
-                            if isinstance(content, str) and content.strip():
-                                return content.strip()
-            
-            # 5) Hiçbir yapı eşleşmezse
-            print(f"[GPT] ⚠️ Beklenmeyen yanıt yapısı veya boş text")
-            print(f"[GPT] Status: {data.get('status')}, Keys: {list(data.keys())[:10]}")
+            print(f"[GPT] ⚠️ Beklenmeyen yanıt yapısı")
+            print(f"[GPT] Keys: {list(data.keys())[:10]}")
             return ""
 
         except Exception as e:
@@ -219,7 +183,7 @@ Soru: "Kahve içmek kalbe zararlı mı?"
 
 ŞİMDİ YUKARIDAKİ SORU İÇİN SADECE JSON çıktısı ver (başka hiçbir şey yazma):'''
     
-    result = await call_gpt(prompt, 800)
+    result = await call_gpt(prompt, 1000)  # 800 -> 1000 token
     
     if not result:
         print("[SORGU] ❌ GPT yanıt vermedi, fallback kullanılıyor")
@@ -289,7 +253,7 @@ SADECE JSON çıktısı ver (başka hiçbir şey yazma):
 {{"score": 0-100, "reason": "Kısa açıklama"}}
 ```'''
     
-    result = await call_gpt(prompt, 300)
+    result = await call_gpt(prompt, 500)  # 300 -> 500 token
     
     if not result:
         return simple_relevance_check(question, title, abstract)
