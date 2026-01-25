@@ -128,16 +128,23 @@ async def call_gpt(messages: str, max_tokens: int = 4096, model: str = "gpt-5-mi
 
             data = r.json()
             
-            # Debug: API yanıtının yapısını görelim
-            print(f"[GPT] 🔍 Response keys: {list(data.keys())}")
+            # 1) EN ÖNCELİKLİ: Direkt "text" anahtarı (Responses API'nin ana çıktısı)
+            if "text" in data and isinstance(data["text"], str):
+                result = data["text"].strip()
+                if result:
+                    # Status kontrolü - incomplete ise uyar
+                    if data.get("status") == "incomplete":
+                        reason = data.get("incomplete_details", {}).get("reason", "unknown")
+                        print(f"[GPT] ⚠️ Yanıt incomplete (sebep: {reason}), kısmi sonuç döndürülüyor")
+                    return result
             
-            # 1) Direkt output_text varsa
+            # 2) output_text alternatifi
             if "output_text" in data and isinstance(data["output_text"], str):
                 result = data["output_text"].strip()
                 if result:
                     return result
             
-            # 2) output array içinde content yapısı
+            # 3) output array içinde content yapısı
             if "output" in data and isinstance(data["output"], list):
                 texts = []
                 for item in data["output"]:
@@ -155,7 +162,7 @@ async def call_gpt(messages: str, max_tokens: int = 4096, model: str = "gpt-5-mi
                 if texts:
                     return "\n".join(texts)
             
-            # 3) choices array (ChatCompletion benzeri)
+            # 4) choices array (ChatCompletion benzeri)
             if "choices" in data and isinstance(data["choices"], list):
                 for choice in data["choices"]:
                     if isinstance(choice, dict) and "message" in choice:
@@ -165,9 +172,9 @@ async def call_gpt(messages: str, max_tokens: int = 4096, model: str = "gpt-5-mi
                             if isinstance(content, str) and content.strip():
                                 return content.strip()
             
-            # 4) Hiçbir yapı eşleşmezse
-            print(f"[GPT] ⚠️ Beklenmeyen yanıt yapısı. İlk 500 karakter:")
-            print(json.dumps(data, ensure_ascii=False, indent=2)[:500])
+            # 5) Hiçbir yapı eşleşmezse
+            print(f"[GPT] ⚠️ Beklenmeyen yanıt yapısı veya boş text")
+            print(f"[GPT] Status: {data.get('status')}, Keys: {list(data.keys())[:10]}")
             return ""
 
         except Exception as e:
