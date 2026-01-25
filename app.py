@@ -93,22 +93,20 @@ def detect_category(q: str) -> str:
     if any(w in q for w in ["eğitim", "öğrenme"]): return "Eğitim"
     return "Sağlık"
 
-async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-mini") -> str:
+async def call_gpt(messages: str, max_tokens: int = 4096, model: str = "gpt-5-mini") -> str:
     """OpenAI Responses API (gpt-5-mini) - sağlam metin çıkarma"""
     if not OPENAI_API_KEY:
         return ""
 
     async with httpx.AsyncClient(timeout=90.0) as client:
         try:
-            user_message = messages[-1]["content"]
-
             payload = {
                 "model": model,
                 "input": [
                     {
                         "role": "user",
                         "content": [
-                            {"type": "input_text", "text": user_message}
+                            {"type": "input_text", "text": messages}
                         ]
                     }
                 ],
@@ -129,35 +127,54 @@ async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-m
                 return ""
 
             data = r.json()
-
-            # 1) Bazı yanıtlar direkt output_text döndürebilir
-            ot = data.get("output_text")
-            if isinstance(ot, str) and ot.strip():
-                return ot.strip()
-
-            # 2) Standart: output -> content -> output_text/summary_text
-            texts = []
-            for item in data.get("output", []):
-                for c in item.get("content", []) or []:
-                    ctype = c.get("type")
-                    if ctype in ("output_text", "summary_text"):
-                        t = c.get("text")
-                        if isinstance(t, str) and t:
-                            texts.append(t)
-
-            result = "\n".join(texts).strip()
-            if result:
-                return result
-
-            # 3) Son çare: response yapısı değiştiyse debug için kısa döküm
-            # (prod'da istersen kaldırabilirsin)
-            print("[GPT] ⚠️ Metin çıkarılamadı. Anahtarlar:", list(data.keys()))
+            
+            # Debug: API yanıtının yapısını görelim
+            print(f"[GPT] 🔍 Response keys: {list(data.keys())}")
+            
+            # 1) Direkt output_text varsa
+            if "output_text" in data and isinstance(data["output_text"], str):
+                result = data["output_text"].strip()
+                if result:
+                    return result
+            
+            # 2) output array içinde content yapısı
+            if "output" in data and isinstance(data["output"], list):
+                texts = []
+                for item in data["output"]:
+                    if isinstance(item, dict) and "content" in item:
+                        content = item["content"]
+                        if isinstance(content, list):
+                            for c in content:
+                                if isinstance(c, dict):
+                                    ctype = c.get("type")
+                                    if ctype in ("output_text", "summary_text", "text"):
+                                        t = c.get("text", "")
+                                        if isinstance(t, str) and t.strip():
+                                            texts.append(t.strip())
+                
+                if texts:
+                    return "\n".join(texts)
+            
+            # 3) choices array (ChatCompletion benzeri)
+            if "choices" in data and isinstance(data["choices"], list):
+                for choice in data["choices"]:
+                    if isinstance(choice, dict) and "message" in choice:
+                        msg = choice["message"]
+                        if isinstance(msg, dict) and "content" in msg:
+                            content = msg["content"]
+                            if isinstance(content, str) and content.strip():
+                                return content.strip()
+            
+            # 4) Hiçbir yapı eşleşmezse
+            print(f"[GPT] ⚠️ Beklenmeyen yanıt yapısı. İlk 500 karakter:")
+            print(json.dumps(data, ensure_ascii=False, indent=2)[:500])
             return ""
 
         except Exception as e:
             print(f"[GPT] ❌ Exception: {e}")
+            import traceback
+            traceback.print_exc()
             return ""
-
 
 
 async def generate_search_queries(question: str) -> list:
@@ -195,7 +212,7 @@ Soru: "Kahve içmek kalbe zararlı mı?"
 
 ŞİMDİ YUKARIDAKİ SORU İÇİN SADECE JSON çıktısı ver (başka hiçbir şey yazma):'''
     
-    result = await call_gpt(prompt, 800)  # 500 -> 800
+    result = await call_gpt(prompt, 800)
     
     if not result:
         print("[SORGU] ❌ GPT yanıt vermedi, fallback kullanılıyor")
@@ -265,7 +282,7 @@ SADECE JSON çıktısı ver (başka hiçbir şey yazma):
 {{"score": 0-100, "reason": "Kısa açıklama"}}
 ```'''
     
-    result = await call_gpt(prompt, 300)  # 150 -> 300 (çok kısa yanıtlar için bile yeterli)
+    result = await call_gpt(prompt, 300)
     
     if not result:
         return simple_relevance_check(question, title, abstract)
@@ -397,7 +414,7 @@ async def synthesize_results(question: str, papers: list, level: str = "medium")
     """GPT-5-mini ile sentez"""
     levels = {
         "simple": "10 yaşındaki bir çocuğa anlatır gibi, ÇOK BASİT dil kullan.", 
-        "medium": "Lise mezunu bir yetişkine anlatır gibi, ANLAŞİLİR dil kullan.", 
+        "medium": "Lise mezunu bir yetişkine anlatır gibi, ANLAŞILİR dil kullan.", 
         "academic": "Üniversite öğrencisine anlatır gibi, DETAYLI ve teknik terimlerle açıkla."
     }
     
