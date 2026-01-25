@@ -29,8 +29,18 @@
                 <h1 id="questionTitle" class="claim-text">Yükleniyor...</h1>
             </div>
 
+            <!-- FAZ 1: Kanıt Gücü Göstergesi -->
+            <div id="evidenceStrength" class="evidence-strength-box">
+                <div class="evidence-label">Kanıt Gücü</div>
+                <div id="evidenceBadge" class="evidence-badge-large"></div>
+                <p id="evidenceDescription" class="evidence-description"></p>
+            </div>
+
             <section class="summary-section">
-                <h2>📋 Bilimsel Özet</h2>
+                <div class="summary-header">
+                    <h2>📋 Bilimsel Özet</h2>
+                    <div id="explanationLevel" class="explanation-level-indicator"></div>
+                </div>
                 <div id="summaryText" class="summary-content">
                     Yükleniyor...
                 </div>
@@ -50,6 +60,12 @@
                 <h2>⚖️ Çelişkili Görüşler</h2>
                 <div id="conflictsList" class="conflicts-list"></div>
             </div>
+
+            <!-- FAZ 1: İlgili Sorular -->
+            <section id="relatedQuestionsSection" class="related-questions-section" style="display: none;">
+                <h2>💡 Bunu da Merak Edebilirsiniz</h2>
+                <div id="relatedQuestionsList" class="related-questions-grid"></div>
+            </section>
 
             <div class="tabs">
                 <button class="tab active" data-tab="all">
@@ -116,6 +132,22 @@
                 <div id="qualityNote" class="quality-note"></div>
             </section>
 
+            <!-- FAZ 1: Sosyal Paylaşım -->
+            <section class="share-section">
+                <h3>📱 Paylaş</h3>
+                <div class="share-buttons">
+                    <button class="share-btn twitter" onclick="shareOnTwitter()">
+                        <span>🐦</span> Twitter
+                    </button>
+                    <button class="share-btn whatsapp" onclick="shareOnWhatsApp()">
+                        <span>💬</span> WhatsApp
+                    </button>
+                    <button class="share-btn copy" onclick="copyLink()">
+                        <span>🔗</span> Linki Kopyala
+                    </button>
+                </div>
+            </section>
+
             <div class="disclaimer result-disclaimer">
                 <p id="disclaimerText">
                     <strong>⚠️ Önemli:</strong> Bu bir bilimsel literatür özetidir. 
@@ -155,6 +187,12 @@
 
             const synthesis = data.synthesis || {};
 
+            // FAZ 1: Kanıt Gücü
+            renderEvidenceStrength(data.evidence_strength);
+
+            // FAZ 1: Anlatım Seviyesi Göstergesi
+            renderExplanationLevel(data.explanation_level);
+
             // Summary
             document.getElementById('summaryText').textContent = 
                 synthesis.summary || 'Özet oluşturulamadı.';
@@ -172,6 +210,12 @@
             if (synthesis.conflicting_views && synthesis.conflicting_views.length > 0) {
                 document.getElementById('conflictsSection').style.display = 'block';
                 renderList(synthesis.conflicting_views, 'conflictsList', 'conflict-item');
+            }
+
+            // FAZ 1: İlgili Sorular
+            if (data.related_questions && data.related_questions.length > 0) {
+                document.getElementById('relatedQuestionsSection').style.display = 'block';
+                renderRelatedQuestions(data.related_questions);
             }
 
             // Research Gaps
@@ -214,6 +258,81 @@
             }
 
             setupTabs();
+        }
+
+        // FAZ 1: Kanıt Gücü Render
+        function renderEvidenceStrength(strength) {
+            const badge = document.getElementById('evidenceBadge');
+            const description = document.getElementById('evidenceDescription');
+
+            const levels = {
+                'strong': {
+                    icon: '🟢',
+                    text: 'Güçlü Kanıt',
+                    desc: 'Çok sayıda yüksek kaliteli çalışma, meta-analizler mevcut. Bulgular tutarlı.',
+                    class: 'evidence-strong'
+                },
+                'moderate': {
+                    icon: '🟡',
+                    text: 'Orta Seviye Kanıt',
+                    desc: 'Sınırlı sayıda çalışma var. Bazı çelişkili bulgular olabilir.',
+                    class: 'evidence-moderate'
+                },
+                'limited': {
+                    icon: '🟠',
+                    text: 'Sınırlı Kanıt',
+                    desc: 'Az sayıda çalışma. Daha fazla araştırma gerekli.',
+                    class: 'evidence-limited'
+                },
+                'insufficient': {
+                    icon: '🔴',
+                    text: 'Yetersiz Veri',
+                    desc: 'Yeterli akademik çalışma bulunamadı.',
+                    class: 'evidence-insufficient'
+                }
+            };
+
+            const level = levels[strength] || levels['insufficient'];
+            
+            badge.innerHTML = `<span class="${level.class}">${level.icon} ${level.text}</span>`;
+            description.textContent = level.desc;
+        }
+
+        // FAZ 1: Anlatım Seviyesi Göstergesi
+        function renderExplanationLevel(level) {
+            const indicator = document.getElementById('explanationLevel');
+            
+            const levels = {
+                'simple': { icon: '🧒', text: 'Basit Anlatım' },
+                'medium': { icon: '🧑', text: 'Orta Seviye' },
+                'academic': { icon: '🎓', text: 'Akademik Dil' }
+            };
+
+            const l = levels[level] || levels['medium'];
+            indicator.innerHTML = `<span class="level-indicator">${l.icon} ${l.text}</span>`;
+        }
+
+        // FAZ 1: İlgili Sorular
+        function renderRelatedQuestions(questions) {
+            const container = document.getElementById('relatedQuestionsList');
+            
+            let html = '';
+            questions.forEach(q => {
+                html += `
+                    <div class="related-question-card" onclick="askRelatedQuestion('${escapeHtml(q.question)}')">
+                        <span class="related-icon">${q.icon}</span>
+                        <h4>${escapeHtml(q.question)}</h4>
+                        <span class="related-action">Araştır →</span>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function askRelatedQuestion(question) {
+            sessionStorage.setItem('prefillQuestion', question);
+            window.location.href = '/';
         }
 
         function renderList(items, containerId, className, isUl = false) {
@@ -307,6 +426,26 @@
                     const tabName = tab.dataset.tab;
                     document.getElementById(tabName + 'Tab').classList.add('active');
                 });
+            });
+        }
+
+        // FAZ 1: Paylaşım Fonksiyonları
+        function shareOnTwitter() {
+            const question = sessionStorage.getItem('originalQuestion');
+            const text = `"${question}" sorusunun bilimsel yanıtını @AkademikSoru'da buldum!`;
+            const url = window.location.href;
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+        }
+
+        function shareOnWhatsApp() {
+            const question = sessionStorage.getItem('originalQuestion');
+            const text = `"${question}" sorusunun bilimsel yanıtını buldum: ${window.location.href}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link kopyalandı!');
             });
         }
 

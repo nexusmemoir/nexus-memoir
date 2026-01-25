@@ -51,6 +51,34 @@
                     <div class="char-count"><span id="charCount">0</span>/500</div>
                 </div>
                 
+                <!-- FAZ 1: Anlatım Seviyesi Seçimi -->
+                <div class="explanation-level-selector">
+                    <label class="level-label">Anlatım Seviyesi:</label>
+                    <div class="level-options">
+                        <label class="level-option">
+                            <input type="radio" name="level" value="simple" />
+                            <span class="level-card">
+                                <span class="level-icon">🧒</span>
+                                <span class="level-name">Basit</span>
+                            </span>
+                        </label>
+                        <label class="level-option">
+                            <input type="radio" name="level" value="medium" checked />
+                            <span class="level-card">
+                                <span class="level-icon">🧑</span>
+                                <span class="level-name">Orta</span>
+                            </span>
+                        </label>
+                        <label class="level-option">
+                            <input type="radio" name="level" value="academic" />
+                            <span class="level-card">
+                                <span class="level-icon">🎓</span>
+                                <span class="level-name">Akademik</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
                 <button type="submit" class="btn-search" id="searchBtn">
                     <span class="btn-icon">🔍</span>
                     <span class="btn-text">Araştır</span>
@@ -78,6 +106,52 @@
         </div>
     </main>
 
+    <!-- FAZ 1: Kategoriler -->
+    <section class="categories-section">
+        <div class="container">
+            <h2 class="section-title">Konular</h2>
+            <div class="categories-grid">
+                {% for category in categories %}
+                <a href="/category/{{ category.name }}" class="category-card" style="border-color: {{ category.color }};">
+                    <span class="category-icon">{{ category.icon }}</span>
+                    <span class="category-name">{{ category.name }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- FAZ 1: Popüler Sorular -->
+    <section class="popular-questions-section">
+        <div class="container">
+            <h2 class="section-title">Bugün En Çok Merak Edilenler</h2>
+            <div class="questions-grid">
+                {% for q in popular_questions %}
+                <div class="question-card" onclick="fillQuestion('{{ q.question }}')">
+                    <div class="question-header">
+                        <span class="question-icon">{{ q.icon }}</span>
+                        <span class="question-category">{{ q.category }}</span>
+                    </div>
+                    <h3 class="question-title">{{ q.question }}</h3>
+                    <p class="question-preview">{{ q.preview }}</p>
+                    <div class="question-footer">
+                        <span class="evidence-badge evidence-{{ q.evidence_level }}">
+                            {% if q.evidence_level == 'strong' %}
+                                🟢 Güçlü Kanıt
+                            {% elif q.evidence_level == 'moderate' %}
+                                🟡 Orta Kanıt
+                            {% else %}
+                                🔴 Sınırlı Veri
+                            {% endif %}
+                        </span>
+                        <span class="question-action">Araştır →</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
     <section class="features">
         <div class="container">
             <div class="features-grid">
@@ -96,34 +170,6 @@
                     <h3>Objektif</h3>
                     <p>Kesin hüküm vermiyoruz, bilimin ne dediğini gösteriyoruz</p>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="examples">
-        <div class="container">
-            <h2 style="text-align: center; margin-bottom: 30px; font-size: 1.8rem;">
-                💡 Örnek Sorular
-            </h2>
-            <div class="examples-grid">
-                <button class="example-card" onclick="fillQuestion(this.textContent)">
-                    Kahve içmek sağlığa zararlı mı?
-                </button>
-                <button class="example-card" onclick="fillQuestion(this.textContent)">
-                    Yemekleri tekrar ısıtmak zararlı mı?
-                </button>
-                <button class="example-card" onclick="fillQuestion(this.textContent)">
-                    Gece geç uyumak kilo aldırır mı?
-                </button>
-                <button class="example-card" onclick="fillQuestion(this.textContent)">
-                    C vitamini soğuk algınlığına iyi gelir mi?
-                </button>
-                <button class="example-card" onclick="fillQuestion(this.textContent)">
-                    Plastik şişeler kanser yapar mı?
-                </button>
-                <button class="example-card" onclick="fillQuestion(this.textContent)">
-                    Intermittent fasting işe yarıyor mu?
-                </button>
             </div>
         </div>
     </section>
@@ -161,6 +207,8 @@
             input.value = text;
             charCount.textContent = text.length;
             input.focus();
+            // Scroll to form
+            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         form.addEventListener('submit', async (e) => {
@@ -172,6 +220,8 @@
                 return;
             }
 
+            const level = document.querySelector('input[name="level"]:checked').value;
+
             form.style.display = 'none';
             loadingState.style.display = 'block';
             errorState.style.display = 'none';
@@ -181,6 +231,7 @@
             try {
                 const formData = new FormData();
                 formData.append('question', question);
+                formData.append('level', level);
 
                 const response = await fetch('/api/research', {
                     method: 'POST',
