@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""AkademikSoru FAZ 3 - GeliÅŸmiÅŸ Bilimsel AraÅŸtÄ±rma Platformu"""
+"""AkademikSoru FAZ 3 - Gelişmiş Bilimsel AraştĞ±rma Platformu"""
 
 import os, re, json, hashlib, secrets, asyncio
 from datetime import datetime, timezone
@@ -40,21 +40,21 @@ async def startup():
     init_database()
 
 CATEGORIES = [
-    {"name": "SaÄŸlÄ±k", "icon": "ðŸ¥"},
-    {"name": "Beslenme", "icon": "ðŸ¥—"},
-    {"name": "Psikoloji", "icon": "ðŸ§ "},
-    {"name": "Spor", "icon": "ðŸƒ"},
-    {"name": "Teknoloji", "icon": "ðŸ’»"},
-    {"name": "Ã‡evre", "icon": "ðŸŒ"},
-    {"name": "EÄŸitim", "icon": "ðŸ“š"},
-    {"name": "Uyku", "icon": "ðŸ˜´"},
+    {"name": "Sağlık", "icon": "🏥"},
+    {"name": "Beslenme", "icon": "🥗"},
+    {"name": "Psikoloji", "icon": "🧠"},
+    {"name": "Spor", "icon": "🏃"},
+    {"name": "Teknoloji", "icon": "💻"},
+    {"name": "Çevre", "icon": "🌍"},
+    {"name": "Eğitim", "icon": "📚"},
+    {"name": "Uyku", "icon": "😴"},
 ]
 
 POPULAR_QUESTIONS = [
-    {"question": "Kahve iÃ§mek saÄŸlÄ±ÄŸa zararlÄ± mÄ±?", "icon": "â˜•", "category": "Beslenme", "preview": "Kahve tÃ¼ketiminin kalp saÄŸlÄ±ÄŸÄ± ve biliÅŸsel fonksiyonlar Ã¼zerindeki etkileri...", "evidence_level": "strong"},
-    {"question": "GÃ¼nde kaÃ§ saat uyumalÄ±yÄ±z?", "icon": "ðŸ˜´", "category": "Uyku", "preview": "YaÅŸa gÃ¶re ideal uyku sÃ¼resi ve saÄŸlÄ±k etkileri...", "evidence_level": "strong"},
-    {"question": "Meditasyon gerÃ§ekten iÅŸe yarÄ±yor mu?", "icon": "ðŸ§˜", "category": "Psikoloji", "preview": "Mindfulness ve meditasyonun stres Ã¼zerindeki etkileri...", "evidence_level": "strong"},
-    {"question": "Yapay tatlandÄ±rÄ±cÄ±lar zararlÄ± mÄ±?", "icon": "ðŸ¬", "category": "Beslenme", "preview": "Aspartam ve diÄŸer tatlandÄ±rÄ±cÄ±larÄ±n gÃ¼venliÄŸi...", "evidence_level": "moderate"},
+    {"question": "Kahve içmek sağlığa zararlı mı?", "icon": "☕", "category": "Beslenme", "preview": "Kahve tüketiminin kalp sağlığı ve bilişsel fonksiyonlar üzerindeki etkileri...", "evidence_level": "strong"},
+    {"question": "Günde kaç saat uyumalıyız?", "icon": "😴", "category": "Uyku", "preview": "Yaşa göre ideal uyku süresi ve sağlık etkileri...", "evidence_level": "strong"},
+    {"question": "Meditasyon gerçekten işe yarıyor mu?", "icon": "🧘", "category": "Psikoloji", "preview": "Mindfulness ve meditasyonun stres üzerindeki etkileri...", "evidence_level": "strong"},
+    {"question": "Yapay tatlandırıcılar zararlı mı?", "icon": "🍬", "category": "Beslenme", "preview": "Aspartam ve diğer tatlandırıcıların güvenliği...", "evidence_level": "moderate"},
 ]
 
 def get_current_user(request: Request) -> Optional[dict]:
@@ -86,11 +86,11 @@ def detect_category(q: str) -> str:
     if any(w in q for w in ["kahve", "yemek", "beslenme", "diyet", "vitamin", "protein"]): return "Beslenme"
     if any(w in q for w in ["uyku", "uyumak"]): return "Uyku"
     if any(w in q for w in ["depresyon", "anksiyete", "stres", "psikoloji", "meditasyon"]): return "Psikoloji"
-    if any(w in q for w in ["spor", "egzersiz", "koÅŸu"]): return "Spor"
+    if any(w in q for w in ["spor", "egzersiz", "koşu"]): return "Spor"
     if any(w in q for w in ["yapay zeka", "teknoloji", "bilgisayar"]): return "Teknoloji"
-    if any(w in q for w in ["iklim", "Ã§evre"]): return "Ã‡evre"
-    if any(w in q for w in ["eÄŸitim", "Ã¶ÄŸrenme"]): return "EÄŸitim"
-    return "SaÄŸlÄ±k"
+    if any(w in q for w in ["iklim", "çevre"]): return "Çevre"
+    if any(w in q for w in ["eğitim", "öğrenme"]): return "Eğitim"
+    return "SağlĞ±k"
 
 async def call_gpt(messages: list, max_tokens: int = 2000) -> str:
     if not OPENAI_API_KEY: return ""
@@ -105,31 +105,31 @@ async def call_gpt(messages: list, max_tokens: int = 2000) -> str:
             return ""
 
 async def generate_search_queries(question: str) -> list:
-    """GeliÅŸmiÅŸ sorgu üretimi - Anlamsal ve bağlamsal yaklaşım"""
-    prompt = f'''TÃ¼rkÃ§e Soru: "{question}"
+    """Gelişmiş sorgu üretimi - Anlamsal ve bağlamsal yaklaşım"""
+    prompt = f'''Türkçe Soru: "{question}"
 
-SEN BÄ°R AKADEMÄ°K ARAÅ TIRMA UZMANISIN. Bu soruyu anlamsal olarak analiz et ve akademik makalelerde GERÃ‡EKTEN bu soruyu yanÄ±tlayabilecek makaleleri bulacak AKILLI sorgular oluÅŸtur.
+SEN BĞ°R AKADEMĞ°K ARAÅ TIRMA UZMANISIN. Bu soruyu anlamsal olarak analiz et ve akademik makalelerde GERÇEKTEN bu soruyu yanĞ±tlayabilecek makaleleri bulacak AKILLI sorgular oluştur.
 
 STRATEJİ:
-1. **Ana Kavram Sorgusu**: Sorunun merkezindeki ana bilimsel kavramlarÄ± kullan
-2. **Spesifik Sorgu**: Sorunun tam olarak sorduÄŸu ÅŸeyin Ä°ngilizce karÅŸÄ±lÄ±ÄŸÄ±
-3. **Ä°lgili AraÅŸtÄ±rma AlanÄ±**: Bu soruyu araÅŸtÄ±racak bilim alanÄ± ve methodolojisi
+1. **Ana Kavram Sorgusu**: Sorunun merkezindeki ana bilimsel kavramlarĞ± kullan
+2. **Spesifik Sorgu**: Sorunun tam olarak sorduğu şeyin Ğ°ngilizce karşĞ±lĞ±ğĞ±
+3. **Ğ°lgili AraştĞ±rma AlanĞ±**: Bu soruyu araştĞ±racak bilim alanĞ± ve methodolojisi
 
 UYARILAR:
-- Kelime kelime Ã§eviri yapma, ANLAMI Ã§evir
+- Kelime kelime çeviri yapma, ANLAMI çevir
 - Akademik terimleri kullan (clinical study, meta-analysis, systematic review, effects, impact, vb)
-- Ã‡ok genel veya Ã§ok dar olma, dengeli ol
-- SorguÅŸarÄ± 3-6 kelime tutmaya çalış
+- Çok genel veya çok dar olma, dengeli ol
+- SorguşarĞ± 3-6 kelime tutmaya çalış
 
-Ã–RNEK:
-Soru: "Kahve iÃ§mek zararlÄ± mÄ±?"
+ÖRNEK:
+Soru: "Kahve içmek zararlĞ± mĞ±?"
 Sorgular:
 1. "coffee consumption health effects"
 2. "caffeine cardiovascular impact meta-analysis"
 3. "coffee intake chronic disease risk"
 
-ÅžiMDÄ° YUKARIDAKÄ° SORU Ä°Ã‡Ä°N JSON formatÄ±nda yanÄ±t ver:
-{{"queries": ["sorgu1", "sorgu2", "sorgu3"], "keywords": ["anahtar1", "anahtar2"], "reasoning": "NasÄ±l düşündüğün"}}'''
+ŞiMDĞ° YUKARIDAKĞ° SORU Ğ°ÇĞ°N JSON formatĞ±nda yanĞ±t ver:
+{{"queries": ["sorgu1", "sorgu2", "sorgu3"], "keywords": ["anahtar1", "anahtar2"], "reasoning": "NasĞ±l düşündüğün"}}'''
     
     result = await call_gpt([{"role": "user", "content": prompt}], 400)
     try:
@@ -149,9 +149,9 @@ Sorgular:
 async def synthesize_results(question: str, papers: list, level: str = "medium") -> dict:
     """Sonuçları sentezle - sadece alakalı makaleleri kullan"""
     levels = {
-        "simple": "Ã‡ok basit, teknik terim kullanma. 10 yaÅŸÄ±ndaki birine anlatÄ±r gibi.", 
-        "medium": "Orta seviye, genel kÃ¼ltÃ¼r dÃ¼zeyinde. Lise mezunu birine anlatÄ±r gibi.", 
-        "academic": "Akademik, detaylÄ± teknik terimlerle. Ãœniversite öğrencisine anlatÄ±r gibi."
+        "simple": "Çok basit, teknik terim kullanma. 10 yaşĞ±ndaki birine anlatĞ±r gibi.", 
+        "medium": "Orta seviye, genel kültür düzeyinde. Lise mezunu birine anlatĞ±r gibi.", 
+        "academic": "Akademik, detaylĞ± teknik terimlerle. Üniversite öğrencisine anlatĞ±r gibi."
     }
     
     # En alakalı makaleleri seç (relevance_score varsa ona göre, yoksa citation'a göre)
@@ -162,34 +162,34 @@ async def synthesize_results(question: str, papers: list, level: str = "medium")
     )[:8]
     
     papers_text = "\n\n".join([
-        f"{i}. BaÅŸlÄ±k: {p.get('title','?')}\n   YÄ±l: {p.get('year','?')} | AtÄ±f: {p.get('citationCount',0)}\n   Ã–zet: {(p.get('abstract') or '')[:450]}..." 
+        f"{i}. BaşlĞ±k: {p.get('title','?')}\n   YĞ±l: {p.get('year','?')} | AtĞ±f: {p.get('citationCount',0)}\n   Özet: {(p.get('abstract') or '')[:450]}..." 
         for i, p in enumerate(relevant_papers, 1)
     ])
     
-    prompt = f'''ARAÅžTIRILAN SORU: "{question}"
+    prompt = f'''ARAŞTIRILAN SORU: "{question}"
 
-BULUNAN AKADEMÄ°K MAKALELER:
+BULUNAN AKADEMĞ°K MAKALELER:
 {papers_text}
 
 SENİN GÖREVİN:
-Bu makaleleri analiz edip soruyu TÃœRKÃ‡E olarak yanÄ±tla. 
+Bu makaleleri analiz edip soruyu TÜRKÇE olarak yanĞ±tla. 
 
 DİKKAT:
-- Makaleler Ä°ngilizce ama sen TÃœRKÃ‡E yaz
-- Sadece GERÃ‡EKTEN soruyla ilgili makaleleri kullan
-- EÄŸer makaleler soruyu yanÄ±tlamÄ±yorsa, bunu belirt
-- KaynaklarÄ± birleÅŸtir, tekrar etme
+- Makaleler Ğ°ngilizce ama sen TÜRKÇE yaz
+- Sadece GERÇEKTEN soruyla ilgili makaleleri kullan
+- Eğer makaleler soruyu yanĞ±tlamĞ±yorsa, bunu belirt
+- KaynaklarĞ± birleştir, tekrar etme
 
-AÃ‡IKLAMA SEVÄ°YESÄ°: {levels.get(level, levels["medium"])}
+AÇIKLAMA SEVĞ°YESĞ°: {levels.get(level, levels["medium"])}
 
-JSON formatÄ±nda yanÄ±t ver:
+JSON formatĞ±nda yanĞ±t ver:
 {{
-    "summary": "3-4 paragraf TÃ¼rkÃ§e Ã¶zet - makalelerden Ã§Ä±kan sonuÃ§larÄ± anlaÅŸÄ±lÄ±r ÅŸekilde aÃ§Ä±kla",
+    "summary": "3-4 paragraf Türkçe özet - makalelerden çĞ±kan sonuçlarĞ± anlaşĞ±lĞ±r şekilde açĞ±kla",
     "evidence_strength": "strong/moderate/limited/insufficient",
-    "evidence_description": "KanÄ±t gÃ¼cÃ¼ aÃ§Ä±klamasÄ± - kaÃ§ Ã§alÄ±ÅŸma, nasÄ±l bir consensus var?",
+    "evidence_description": "KanĞ±t gücü açĞ±klamasĞ± - kaç çalĞ±şma, nasĞ±l bir consensus var?",
     "key_points": ["Ana nokta 1", "Ana nokta 2", "Ana nokta 3"],
-    "limitations": "AraÅŸtÄ±rmanÄ±n sÄ±nÄ±rlÄ±lÄ±klarÄ± - neyi bilmiyoruz?",
-    "related_questions": ["Ä°lgili soru 1", "Ä°lgili soru 2"]
+    "limitations": "AraştĞ±rmanĞ±n sĞ±nĞ±rlĞ±lĞ±klarĞ± - neyi bilmiyoruz?",
+    "related_questions": ["Ğ°lgili soru 1", "Ğ°lgili soru 2"]
 }}'''
     
     result = await call_gpt([{"role": "user", "content": prompt}], 2500)
@@ -199,14 +199,14 @@ JSON formatÄ±nda yanÄ±t ver:
             data = json.loads(m.group())
             # Validation
             if not data.get("summary") or len(data.get("summary", "")) < 100:
-                data["summary"] = "Makaleler soruyu doÄŸrudan yanÄ±tlamÄ±yor. Daha spesifik bir soru sormanÄ±z Ã¶nerilir."
+                data["summary"] = "Makaleler soruyu doğrudan yanĞ±tlamĞ±yor. Daha spesifik bir soru sormanĞ±z önerilir."
                 data["evidence_strength"] = "insufficient"
             return data
     except: 
         pass
     
     return {
-        "summary": result or "Yeterli bilgi bulunamadÄ±. Makaleler soruyla yeterince alakalÄ± deÄŸil.", 
+        "summary": result or "Yeterli bilgi bulunamadĞ±. Makaleler soruyla yeterince alakalĞ± değil.", 
         "evidence_strength": "insufficient", 
         "evidence_description": "Alakalı kaynak bulunamadı veya sentez yapılamadı.", 
         "key_points": [], 
@@ -215,34 +215,34 @@ JSON formatÄ±nda yanÄ±t ver:
     }
 
 async def analyze_paper_deeply(paper: dict, question: str) -> dict:
-    """FAZ 3: Makaleyi derinlemesine analiz et - Ä°ngilizce iÃ§eriÄŸi TÃ¼rkÃ§e'ye Ã§evir"""
+    """FAZ 3: Makaleyi derinlemesine analiz et - Ğ°ngilizce içeriği Türkçe'ye çevir"""
     title = paper.get("title", "")
     abstract = paper.get("abstract", "") or ""
     
-    prompt = f'''AraÅŸtÄ±rÄ±lan Soru: "{question}"
+    prompt = f'''AraştĞ±rĞ±lan Soru: "{question}"
 
 Makale: {title}
-Ã–zet (Ä°ngilizce): {abstract}
+Özet (Ğ°ngilizce): {abstract}
 
-GÃ–REV:
-1. Bu makaleden soruyla ilgili EN Ã–NEMLÄ° 3 bulguyu Ã§Ä±kar
-2. Her bulguyu TÃœRKÃ‡E'ye Ã§evir ve aÃ§Ä±kla
-3. Orijinal Ä°ngilizce cÃ¼mleyi de ekle
-4. Her bulgunun gÃ¼nlÃ¼k hayatta ne anlama geldiÄŸini yaz
+GÖREV:
+1. Bu makaleden soruyla ilgili EN ÖNEMLĞ° 3 bulguyu çĞ±kar
+2. Her bulguyu TÜRKÇE'ye çevir ve açĞ±kla
+3. Orijinal Ğ°ngilizce cümleyi de ekle
+4. Her bulgunun günlük hayatta ne anlama geldiğini yaz
 
-JSON formatÄ±:
+JSON formatĞ±:
 {{
     "relevance_score": 0-100,
-    "main_finding": "Makalenin ana bulgusu (TÃ¼rkÃ§e, 1-2 cÃ¼mle)",
+    "main_finding": "Makalenin ana bulgusu (Türkçe, 1-2 cümle)",
     "key_insights": [
         {{
-            "turkish": "TÃ¼rkÃ§e Ã§eviri ve aÃ§Ä±klama",
+            "turkish": "Türkçe çeviri ve açĞ±klama",
             "original": "Original English sentence from abstract",
-            "explanation": "Bu gÃ¼nlÃ¼k hayatta ne anlama geliyor? Basit aÃ§Ä±klama"
+            "explanation": "Bu günlük hayatta ne anlama geliyor? Basit açĞ±klama"
         }}
     ],
-    "methodology_note": "AraÅŸtÄ±rma yÃ¶ntemi (Ã¶rn: 1000 kiÅŸilik Ã§alÄ±ÅŸma, meta-analiz)",
-    "practical_takeaway": "Peki ne yapmalÄ±yÄ±z? (1 cÃ¼mle pratik Ã¶neri)"
+    "methodology_note": "AraştĞ±rma yöntemi (örn: 1000 kişilik çalĞ±şma, meta-analiz)",
+    "practical_takeaway": "Peki ne yapmalĞ±yĞ±z? (1 cümle pratik öneri)"
 }}'''
     
     result = await call_gpt([{"role": "user", "content": prompt}], 1500)
@@ -250,10 +250,10 @@ JSON formatÄ±:
         m = re.search(r'\{.*\}', result, re.DOTALL)
         if m: return json.loads(m.group())
     except: pass
-    return {"relevance_score": 50, "main_finding": "Analiz yapÄ±lamadÄ±.", "key_insights": [], "methodology_note": "", "practical_takeaway": ""}
+    return {"relevance_score": 50, "main_finding": "Analiz yapĞ±lamadĞ±.", "key_insights": [], "methodology_note": "", "practical_takeaway": ""}
 
 async def check_paper_relevance(question: str, paper: dict) -> dict:
-    """Makalenin soruyla alakalÄ±lÄ±ÄŸÄ±nÄ± kontrol et ve skor ver"""
+    """Makalenin soruyla alakalĞ±lĞ±ğĞ±nĞ± kontrol et ve skor ver"""
     title = paper.get("title", "")
     abstract = paper.get("abstract", "") or ""
     
@@ -264,16 +264,16 @@ async def check_paper_relevance(question: str, paper: dict) -> dict:
     # GPT ile hızlı relevance check
     prompt = f'''Soru: "{question}"
 
-Makale BaÅŸlÄ±ÄŸÄ±: {title}
-Makale Ã–zeti: {abstract[:500]}
+Makale BaşlĞ±ğĞ±: {title}
+Makale Özeti: {abstract[:500]}
 
-Bu makale yukarÄ±daki soruyu yanÄ±tlamak iÃ§in ne kadar ALAKALI? 
-- Ä°lgisizse: 0-30
+Bu makale yukarĞ±daki soruyu yanĞ±tlamak için ne kadar ALAKALI? 
+- Ğ°lgisizse: 0-30
 - Biraz ilgiliyse: 31-60  
-- Ä°lgiliyse: 61-85
-- Ã‡ok ilgiliyse: 86-100
+- Ğ°lgiliyse: 61-85
+- Çok ilgiliyse: 86-100
 
-Sadece bir sayÄ± (0-100) ve kÄ±sa bir neden ver.
+Sadece bir sayĞ± (0-100) ve kĞ±sa bir neden ver.
 Format: {{"score": 75, "reason": "..."}}'''
     
     result = await call_gpt([{"role": "user", "content": prompt}], 150)
@@ -312,10 +312,10 @@ async def search_semantic_scholar(query: str, limit: int = 10) -> list:
     return []
 
 async def search_papers(question: str) -> list:
-    """GeliÅŸmiÅŸ makale arama - Alakalılık kontrolü ve akÄ±llÄ± filtreleme"""
+    """Gelişmiş makale arama - Alakalılık kontrolü ve akĞ±llĞ± filtreleme"""
     # 1. Akıllı sorgular üret
     queries = await generate_search_queries(question)
-    print(f"[ARAÅžTIRMA] Üretilen sorgular: {queries}")
+    print(f"[ARAŞTIRMA] Üretilen sorgular: {queries}")
     
     # 2. Tüm sorgulardan makaleleri topla
     all_papers, seen = [], set()
@@ -328,7 +328,7 @@ async def search_papers(question: str) -> list:
                 seen.add(t)
                 all_papers.append(p)
     
-    print(f"[ARAÅžTIRMA] Toplam {len(all_papers)} makale bulundu")
+    print(f"[ARAŞTIRMA] Toplam {len(all_papers)} makale bulundu")
     
     # 3. Alakalılık kontrolü (ilk 25 makaleyi kontrol et - performans için)
     papers_to_check = all_papers[:25]
@@ -342,7 +342,7 @@ async def search_papers(question: str) -> list:
         
         # Alakalı makaleleri filtrele (skor >= 40) ve sırala
         filtered_papers = [p for p in papers_to_check if p.get("relevance_score", 0) >= 40]
-        print(f"[ARAÅžTIRMA] Alakalı {len(filtered_papers)} makale bulundu (skor >= 40)")
+        print(f"[ARAŞTIRMA] Alakalı {len(filtered_papers)} makale bulundu (skor >= 40)")
         
         # Sıralama: %50 relevance, %50 citation count
         filtered_papers.sort(
@@ -410,9 +410,9 @@ async def logout(request: Request):
 # AUTH API
 @app.post("/api/register")
 async def api_register(request: Request, email: str = Form(...), username: str = Form(...), password: str = Form(...), display_name: str = Form("")):
-    if len(password) < 6: return JSONResponse({"error": "Åžifre en az 6 karakter olmalÄ±"}, status_code=400)
+    if len(password) < 6: return JSONResponse({"error": "Şifre en az 6 karakter olmalĞ±"}, status_code=400)
     user_id = create_user(email, username, password, display_name or username)
-    if not user_id: return JSONResponse({"error": "Bu email veya kullanÄ±cÄ± adÄ± kullanÄ±lÄ±yor"}, status_code=400)
+    if not user_id: return JSONResponse({"error": "Bu email veya kullanĞ±cĞ± adĞ± kullanĞ±lĞ±yor"}, status_code=400)
     token = create_session(user_id, request.client.host if request.client else "", request.headers.get("user-agent", ""))
     response = JSONResponse({"success": True, "redirect": "/profile"})
     response.set_cookie(key="auth_token", value=token, httponly=True, samesite="lax", max_age=30*24*60*60)
@@ -421,7 +421,7 @@ async def api_register(request: Request, email: str = Form(...), username: str =
 @app.post("/api/login")
 async def api_login(request: Request, email: str = Form(...), password: str = Form(...)):
     user = authenticate_user(email, password)
-    if not user: return JSONResponse({"error": "Email veya ÅŸifre hatalÄ±"}, status_code=401)
+    if not user: return JSONResponse({"error": "Email veya şifre hatalĞ±"}, status_code=401)
     token = create_session(user["id"], request.client.host if request.client else "", request.headers.get("user-agent", ""))
     response = JSONResponse({"success": True, "redirect": "/profile"})
     response.set_cookie(key="auth_token", value=token, httponly=True, samesite="lax", max_age=30*24*60*60)
@@ -431,15 +431,15 @@ async def api_login(request: Request, email: str = Form(...), password: str = Fo
 @app.post("/api/research")
 async def api_research(request: Request, question: str = Form(...), level: str = Form("medium")):
     ip = request.client.host if request.client else "unknown"
-    if not check_rate_limit(ip): return JSONResponse({"error": "Ã‡ok fazla istek. LÃ¼tfen bekleyin."}, status_code=429)
+    if not check_rate_limit(ip): return JSONResponse({"error": "Çok fazla istek. Lütfen bekleyin."}, status_code=429)
     question = question.strip()
-    if len(question) < 10: return JSONResponse({"error": "Soru en az 10 karakter olmalÄ±"}, status_code=400)
+    if len(question) < 10: return JSONResponse({"error": "Soru en az 10 karakter olmalĞ±"}, status_code=400)
     user = get_current_user(request)
     log_search(user["id"] if user else None, question, ip)
     category = detect_category(question)
     papers = await search_papers(question)
     if not papers:
-        return JSONResponse({"question": question, "category": category, "summary": "Bu konu hakkÄ±nda yeterli akademik kaynak bulunamadÄ±.", "evidence_strength": "insufficient", "evidence_description": "Yeterli kaynak bulunamadÄ±.", "papers": [], "key_points": [], "related_questions": [], "paper_count": 0, "question_hash": hash_question(question)})
+        return JSONResponse({"question": question, "category": category, "summary": "Bu konu hakkĞ±nda yeterli akademik kaynak bulunamadĞ±.", "evidence_strength": "insufficient", "evidence_description": "Yeterli kaynak bulunamadĞ±.", "papers": [], "key_points": [], "related_questions": [], "paper_count": 0, "question_hash": hash_question(question)})
     synthesis = await synthesize_results(question, papers, level)
     formatted_papers = []
     for p in papers[:10]:
@@ -452,7 +452,7 @@ async def api_research(request: Request, question: str = Form(...), level: str =
 
 @app.post("/api/paper/analyze")
 async def api_analyze_paper(request: Request, paper_id: str = Form(...), paper_title: str = Form(...), paper_abstract: str = Form(""), question: str = Form(...)):
-    """FAZ 3: Derin makale analizi - Ä°ngilizce iÃ§eriÄŸi TÃ¼rkÃ§e'ye Ã§evirir"""
+    """FAZ 3: Derin makale analizi - Ğ°ngilizce içeriği Türkçe'ye çevirir"""
     paper = {"paperId": paper_id, "title": paper_title, "abstract": paper_abstract}
     analysis = await analyze_paper_deeply(paper, question)
     return JSONResponse({"success": True, "paper_id": paper_id, "analysis": analysis})
@@ -461,15 +461,15 @@ async def api_analyze_paper(request: Request, paper_id: str = Form(...), paper_t
 @app.post("/api/questions/save")
 async def api_save_question(request: Request, question: str = Form(...), category: str = Form(""), result_data: str = Form("")):
     user = get_current_user(request)
-    if not user: return JSONResponse({"error": "GiriÅŸ yapmalÄ±sÄ±nÄ±z"}, status_code=401)
+    if not user: return JSONResponse({"error": "Giriş yapmalĞ±sĞ±nĞ±z"}, status_code=401)
     save_id = save_question(user["id"], question, category, result_data)
-    return JSONResponse({"success": True, "id": save_id}) if save_id else JSONResponse({"error": "Kaydetme baÅŸarÄ±sÄ±z"}, status_code=400)
+    return JSONResponse({"success": True, "id": save_id}) if save_id else JSONResponse({"error": "Kaydetme başarĞ±sĞ±z"}, status_code=400)
 
 @app.delete("/api/questions/save/{save_id}")
 async def api_delete_saved(request: Request, save_id: int):
     user = get_current_user(request)
-    if not user: return JSONResponse({"error": "GiriÅŸ yapmalÄ±sÄ±nÄ±z"}, status_code=401)
-    return JSONResponse({"success": True}) if delete_saved_question(save_id, user["id"]) else JSONResponse({"error": "Silme baÅŸarÄ±sÄ±z"}, status_code=400)
+    if not user: return JSONResponse({"error": "Giriş yapmalĞ±sĞ±nĞ±z"}, status_code=401)
+    return JSONResponse({"success": True}) if delete_saved_question(save_id, user["id"]) else JSONResponse({"error": "Silme başarĞ±sĞ±z"}, status_code=400)
 
 @app.post("/api/vote")
 async def api_vote(request: Request, question_hash: str = Form(...), vote_type: str = Form(...)):
@@ -489,14 +489,14 @@ async def api_get_vote(request: Request, question_hash: str):
 @app.post("/api/topics/follow")
 async def api_follow_topic(request: Request, category: str = Form(...)):
     user = get_current_user(request)
-    if not user: return JSONResponse({"error": "GiriÅŸ yapmalÄ±sÄ±nÄ±z"}, status_code=401)
+    if not user: return JSONResponse({"error": "Giriş yapmalĞ±sĞ±nĞ±z"}, status_code=401)
     follow_topic(user["id"], category)
     return JSONResponse({"success": True, "following": True})
 
 @app.post("/api/topics/unfollow")
 async def api_unfollow_topic(request: Request, category: str = Form(...)):
     user = get_current_user(request)
-    if not user: return JSONResponse({"error": "GiriÅŸ yapmalÄ±sÄ±nÄ±z"}, status_code=401)
+    if not user: return JSONResponse({"error": "Giriş yapmalĞ±sĞ±nĞ±z"}, status_code=401)
     unfollow_topic(user["id"], category)
     return JSONResponse({"success": True, "following": False})
 
@@ -506,7 +506,7 @@ async def api_subscribe_newsletter(request: Request, email: str = Form(""), freq
     if not email and user: email = user.get("email", "")
     if not email: return JSONResponse({"error": "Email gerekli"}, status_code=400)
     subscribe_newsletter(email, user["id"] if user else None, frequency)
-    return JSONResponse({"success": True, "message": "Abonelik baÅŸarÄ±lÄ±!"})
+    return JSONResponse({"success": True, "message": "Abonelik başarĞ±lĞ±!"})
 
 if __name__ == "__main__":
     import uvicorn
