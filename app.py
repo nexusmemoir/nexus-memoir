@@ -119,8 +119,7 @@ async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-m
                         ]
                     }
                 ],
-                "max_output_tokens": max_tokens,
-                "temperature": 0.3
+                "max_output_tokens": max_tokens
             }
 
             response = await client.post(
