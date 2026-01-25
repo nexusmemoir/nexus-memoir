@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profilim - AkademikSoru</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">
+                <span class="logo-icon">🔬</span>
+                <span class="logo-text">AkademikSoru</span>
+            </a>
+            <nav class="nav">
+                <a href="/">Ana Sayfa</a>
+                <div class="user-menu">
+                    <span class="user-name">👤 {{ user.display_name or user.username }}</span>
+                    <a href="/logout" class="btn-logout">Çıkış</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="profile-page">
+        <div class="container">
+            <div class="profile-header">
+                <div class="profile-avatar">{{ (user.display_name or user.username)[0]|upper }}</div>
+                <div class="profile-info">
+                    <h1>{{ user.display_name or user.username }}</h1>
+                    <p class="profile-username">@{{ user.username }}</p>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.saved }}</div>
+                    <div class="stat-label">Kayıtlı Soru</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.searches }}</div>
+                    <div class="stat-label">Araştırma</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.following }}</div>
+                    <div class="stat-label">Takip</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.votes }}</div>
+                    <div class="stat-label">Oy</div>
+                </div>
+            </div>
+
+            <div class="profile-tabs">
+                <button class="tab-btn active" data-tab="saved">📚 Kayıtlı</button>
+                <button class="tab-btn" data-tab="history">🕐 Geçmiş</button>
+                <button class="tab-btn" data-tab="topics">🏷️ Konular</button>
+                <button class="tab-btn" data-tab="newsletter">📬 Newsletter</button>
+            </div>
+
+            <div class="tab-content active" id="saved-tab">
+                <h2>Kayıtlı Sorular</h2>
+                {% if saved_questions %}
+                <div class="saved-list">
+                    {% for q in saved_questions %}
+                    <div class="saved-item" data-id="{{ q.id }}">
+                        <div class="saved-content">
+                            <h3>{{ q.question_text }}</h3>
+                            <span class="saved-date">{{ q.created_at[:10] }}</span>
+                        </div>
+                        <div class="saved-actions">
+                            <button class="btn-view" onclick="searchQ('{{ q.question_text }}')">Araştır</button>
+                            <button class="btn-delete" onclick="deleteSaved({{ q.id }})">🗑️</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <p>Henüz kayıtlı soru yok.</p>
+                    <a href="/" class="btn-primary">Araştırmaya Başla</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="tab-content" id="history-tab">
+                <h2>Arama Geçmişi</h2>
+                {% if search_history %}
+                <div class="history-list">
+                    {% for h in search_history %}
+                    <div class="history-item">
+                        <span class="history-q">{{ h.question_text }}</span>
+                        <span class="history-meta">{{ h.result_count }} sonuç • {{ h.created_at[:10] }}</span>
+                        <button class="btn-search-again" onclick="searchQ('{{ h.question_text }}')">↻</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state"><p>Henüz arama yapmadınız.</p></div>
+                {% endif %}
+            </div>
+
+            <div class="tab-content" id="topics-tab">
+                <h2>Takip Edilen Konular</h2>
+                <div class="topics-grid">
+                    {% for cat in categories %}
+                    <div class="topic-card {% if cat.name in followed_topics %}following{% endif %}" data-cat="{{ cat.name }}">
+                        <span class="topic-icon">{{ cat.icon }}</span>
+                        <span class="topic-name">{{ cat.name }}</span>
+                        <button class="btn-follow" onclick="toggleFollow('{{ cat.name }}', this)">
+                            {% if cat.name in followed_topics %}✓ Takip{% else %}+ Takip{% endif %}
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="tab-content" id="newsletter-tab">
+                <h2>Newsletter</h2>
+                <div class="newsletter-card">
+                    <p>Takip ettiğin konulardaki yeni araştırmalardan haberdar ol.</p>
+                    <form id="newsletterForm" class="newsletter-form">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="nl-email" value="{{ user.email }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Sıklık</label>
+                            <div class="frequency-options">
+                                <label><input type="radio" name="freq" value="weekly" checked> Haftalık</label>
+                                <label><input type="radio" name="freq" value="monthly"> Aylık</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-subscribe">📬 Abone Ol</button>
+                    </form>
+                    <div id="nlMsg" class="message" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+
+        function searchQ(q) {
+            sessionStorage.setItem('autoSearch', q);
+            window.location.href = '/';
+        }
+
+        async function deleteSaved(id) {
+            if (!confirm('Silmek istediğinize emin misiniz?')) return;
+            const r = await fetch(`/api/questions/save/${id}`, {method: 'DELETE'});
+            if (r.ok) document.querySelector(`.saved-item[data-id="${id}"]`).remove();
+        }
+
+        async function toggleFollow(cat, btn) {
+            const card = btn.closest('.topic-card');
+            const isF = card.classList.contains('following');
+            const formData = new FormData();
+            formData.append('category', cat);
+            const r = await fetch(`/api/topics/${isF ? 'unfollow' : 'follow'}`, {method: 'POST', body: formData});
+            const data = await r.json();
+            if (data.success) {
+                card.classList.toggle('following');
+                btn.textContent = data.following ? '✓ Takip' : '+ Takip';
+            }
+        }
+
+        document.getElementById('newsletterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('nl-email').value;
+            const freq = document.querySelector('input[name="freq"]:checked').value;
+            const msgDiv = document.getElementById('nlMsg');
+            
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('frequency', freq);
+            
+            const r = await fetch('/api/newsletter', {method: 'POST', body: formData});
+            const data = await r.json();
+            msgDiv.textContent = data.message || data.error;
+            msgDiv.className = 'message ' + (r.ok ? 'success' : 'error');
+            msgDiv.style.display = 'block';
+        });
+    </script>
+</body>
+</html>

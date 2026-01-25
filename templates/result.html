@@ -17,6 +17,11 @@
             </a>
             <nav class="nav">
                 <a href="/" class="btn-new-search">+ Yeni Soru</a>
+                {% if user %}
+                <a href="/profile" class="user-name">👤 {{ user.display_name or user.username }}</a>
+                {% else %}
+                <a href="/login" class="btn-login">Giriş Yap</a>
+                {% endif %}
             </nav>
         </div>
     </header>
@@ -27,6 +32,24 @@
             <div class="claim-box">
                 <div class="claim-label">Araştırılan Soru</div>
                 <h1 id="questionTitle" class="claim-text">Yükleniyor...</h1>
+            </div>
+
+            <!-- FAZ 2: Oylama ve Kaydetme -->
+            <div class="action-bar">
+                <div class="vote-buttons">
+                    <button class="vote-btn up" id="voteUp" onclick="vote('up')">
+                        👍 <span id="upvoteCount">0</span>
+                    </button>
+                    <button class="vote-btn down" id="voteDown" onclick="vote('down')">
+                        👎 <span id="downvoteCount">0</span>
+                    </button>
+                </div>
+                <button class="save-btn" id="saveBtn" onclick="saveQuestion()">
+                    📌 <span id="saveText">Kaydet</span>
+                </button>
+                <button class="share-btn" onclick="shareResult()">
+                    📤 Paylaş
+                </button>
             </div>
 
             <!-- FAZ 1: Kanıt Gücü Göstergesi -->
@@ -454,6 +477,105 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // FAZ 2: Oylama ve Kaydetme
+        let questionHash = null;
+        let isSaved = false;
+
+        async function initVotesAndSave() {
+            const data = JSON.parse(sessionStorage.getItem('researchResult'));
+            if (data && data.question_hash) {
+                questionHash = data.question_hash;
+                isSaved = data.is_saved || false;
+                updateSaveButton();
+                
+                // Oy bilgisini al
+                try {
+                    const r = await fetch(`/api/vote/${questionHash}`);
+                    const votes = await r.json();
+                    document.getElementById('upvoteCount').textContent = votes.upvotes || 0;
+                    document.getElementById('downvoteCount').textContent = votes.downvotes || 0;
+                    if (votes.user_vote === 'up') {
+                        document.getElementById('voteUp').classList.add('active');
+                    } else if (votes.user_vote === 'down') {
+                        document.getElementById('voteDown').classList.add('active');
+                    }
+                } catch (e) {}
+            }
+        }
+
+        async function vote(type) {
+            if (!questionHash) return;
+            const formData = new FormData();
+            formData.append('question_hash', questionHash);
+            formData.append('vote_type', type);
+            
+            try {
+                const r = await fetch('/api/vote', {method: 'POST', body: formData});
+                const data = await r.json();
+                if (data.success) {
+                    document.getElementById('upvoteCount').textContent = data.upvotes;
+                    document.getElementById('downvoteCount').textContent = data.downvotes;
+                    
+                    document.getElementById('voteUp').classList.remove('active');
+                    document.getElementById('voteDown').classList.remove('active');
+                    if (data.action !== 'removed') {
+                        document.getElementById('vote' + (type === 'up' ? 'Up' : 'Down')).classList.add('active');
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function saveQuestion() {
+            const question = sessionStorage.getItem('originalQuestion');
+            if (!question) return;
+            
+            if (isSaved) {
+                alert('Bu soru zaten kayıtlı.');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('question', question);
+            
+            try {
+                const r = await fetch('/api/questions/save', {method: 'POST', body: formData});
+                const data = await r.json();
+                if (r.ok) {
+                    isSaved = true;
+                    updateSaveButton();
+                } else {
+                    alert(data.error || 'Kaydetme başarısız. Giriş yapmış olmanız gerekiyor.');
+                }
+            } catch (e) {
+                alert('Bir hata oluştu.');
+            }
+        }
+
+        function updateSaveButton() {
+            const btn = document.getElementById('saveBtn');
+            const text = document.getElementById('saveText');
+            if (isSaved) {
+                btn.classList.add('saved');
+                text.textContent = 'Kayıtlı';
+            } else {
+                btn.classList.remove('saved');
+                text.textContent = 'Kaydet';
+            }
+        }
+
+        function shareResult() {
+            const question = sessionStorage.getItem('originalQuestion');
+            const text = `"${question}" sorusunun bilimsel yanıtını AkademikSoru'da buldum!`;
+            if (navigator.share) {
+                navigator.share({title: 'AkademikSoru', text: text, url: window.location.href});
+            } else {
+                copyLink();
+            }
+        }
+
+        // Sayfa yüklendiğinde oy ve kayıt bilgisini al
+        initVotesAndSave();
     </script>
 </body>
 </html>

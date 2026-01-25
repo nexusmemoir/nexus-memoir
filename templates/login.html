@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş Yap - AkademikSoru</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">
+                <span class="logo-icon">🔬</span>
+                <span class="logo-text">AkademikSoru</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="auth-page">
+        <div class="container">
+            <div class="auth-card">
+                <h1 class="auth-title">Giriş Yap</h1>
+                <p class="auth-subtitle">Araştırmalarını kaydet, takip et</p>
+                
+                <form id="loginForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="email">Email veya Kullanıcı Adı</label>
+                        <input type="text" id="email" name="email" required placeholder="ornek@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Şifre</label>
+                        <input type="password" id="password" name="password" required placeholder="••••••••">
+                    </div>
+                    <div id="errorMsg" class="error-message" style="display:none;"></div>
+                    <button type="submit" class="btn-auth">Giriş Yap</button>
+                </form>
+                
+                <div class="auth-footer">
+                    <p>Hesabın yok mu? <a href="/register">Kayıt Ol</a></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMsg');
+            
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('password', password);
+            
+            try {
+                const r = await fetch('/api/login', {method: 'POST', body: formData});
+                const data = await r.json();
+                if (r.ok) {
+                    window.location.href = '/profile';
+                } else {
+                    errorDiv.textContent = data.error;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Bir hata oluştu.';
+                errorDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
