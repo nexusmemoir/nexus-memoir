@@ -113,7 +113,7 @@ async def call_gpt(messages: list, max_tokens: int = 4096, model: str = "gpt-5-m
                         "role": "user",
                         "content": [
                             {
-                                "type": "text",
+                                "type": "input_text",
                                 "text": user_message
                             }
                         ]
