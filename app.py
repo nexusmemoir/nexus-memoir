@@ -95,7 +95,7 @@ def detect_category(q: str) -> str:
 
 async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
     """
-    GPT-5-mini için Responses API - DEBUG MOD
+    GPT-5-mini için Responses API - DÜZELTİLMİŞ v2
     """
     if not OPENAI_API_KEY:
         print("[GPT] ❌ API Key yok!")
@@ -136,27 +136,36 @@ async def call_gpt(prompt: str, max_tokens: int = 4096) -> str:
 
             data = response.json()
             
-            # DEBUG: Raw response yapısını göster
-            print(f"[GPT DEBUG] Response keys: {list(data.keys())}")
-            print(f"[GPT DEBUG] Full response: {json.dumps(data, indent=2)[:500]}")
-
-            # Responses API çıktısını güvenli şekilde topla
+            # ÖNCE: Üst seviye "text" field'ını kontrol et
+            if data.get("text"):
+                result = data["text"].strip()
+                print(f"[GPT] ✅ Text field'dan yanıt alındı ({len(result)} karakter)")
+                return result
+            
+            # SONRA: Output array'ini kontrol et
             output_texts = []
             for item in data.get("output", []):
+                # Her item'ın content'ini kontrol et
                 for content in item.get("content", []):
                     if content.get("type") == "output_text":
                         text = content.get("text", "")
                         if text:
                             output_texts.append(text)
-
-            result = "\n".join(output_texts).strip()
             
-            if not result:
-                print(f"[GPT] ⚠️ Boş yanıt! Output array length: {len(data.get('output', []))}")
-                return ""
+            if output_texts:
+                result = "\n".join(output_texts).strip()
+                print(f"[GPT] ✅ Output array'den yanıt alındı ({len(result)} karakter)")
+                return result
             
-            print(f"[GPT] ✅ Yanıt alındı ({len(result)} karakter)")
-            return result
+            # Status incomplete ise hata ver
+            status = data.get("status", "")
+            if status == "incomplete":
+                reason = data.get("incomplete_details", {}).get("reason", "unknown")
+                print(f"[GPT] ⚠️ Response incomplete! Reason: {reason}")
+                print(f"[GPT] ⚠️ Max tokens çok düşük olabilir: {max_tokens}")
+            
+            print(f"[GPT] ⚠️ Boş yanıt! Status: {status}")
+            return ""
 
         except Exception as e:
             print(f"[GPT] ❌ Exception: {str(e)[:200]}")
@@ -200,7 +209,7 @@ Soru: "Kahve içmek kalbe zararlı mı?"
 
 ŞİMDİ YUKARIDAKİ SORU İÇİN SADECE JSON çıktısı ver (başka hiçbir şey yazma):'''
     
-    result = await call_gpt(prompt, 500)
+    result = await call_gpt(prompt, 800)  # 500 -> 800
     
     if not result:
         print("[SORGU] ❌ GPT yanıt vermedi, fallback kullanılıyor")
@@ -270,7 +279,7 @@ SADECE JSON çıktısı ver (başka hiçbir şey yazma):
 {{"score": 0-100, "reason": "Kısa açıklama"}}
 ```'''
     
-    result = await call_gpt(prompt, 150)
+    result = await call_gpt(prompt, 300)  # 150 -> 300 (çok kısa yanıtlar için bile yeterli)
     
     if not result:
         return simple_relevance_check(question, title, abstract)
