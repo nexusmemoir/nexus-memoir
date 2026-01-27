@@ -1,0 +1,1125 @@
+# -*- coding: utf-8 -*-
+# app.py — NexusMemoir - Complete with API
+import os
+import re
+import hashlib
+import hmac
+import secrets
+import sqlite3
+import io
+import base64
+import html
+import time
+import json
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+import traceback
+from collections import defaultdict
+
+from dotenv import load_dotenv
+load_dotenv()
+
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
+
+try:
+    import qrcode
+except ImportError:
+    print("WARNING: pip install qrcode[pil] --break-system-packages")
+
+from fastapi import FastAPI, Request, Form, UploadFile, File, Query, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+
+# Config
+MAX_NOTES = 5
+MAX_PHOTOS = 10
+MAX_VIDEOS = 1
+MAX_PHOTO_BYTES = 10 * 1024 * 1024
+MAX_VIDEO_BYTES = 80 * 1024 * 1024
+ALLOWED_PHOTO = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_VIDEO = {"video/mp4", "video/webm", "video/quicktime"}
+TZ_TR = ZoneInfo("Europe/Istanbul")
+
+# Rate limiting config
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX_REQUESTS = 30  # max requests per window
+CLAIM_RATE_LIMIT = 5  # max claim attempts per minute
+
+# In-memory rate limiter (for production use Redis)
+rate_limit_store = defaultdict(list)
+claim_attempts = defaultdict(list)
+
+def env_required(name: str) -> str:
+    v = os.getenv(name)
+    if not v:
+        raise RuntimeError(f"Missing: {name}")
+    return v
+
+SECRET_KEY = env_required("SECRET_KEY")
+ADMIN_PASSWORD = env_required("ADMIN_PASSWORD")
+R2_ENDPOINT = env_required("R2_ENDPOINT")
+R2_ACCESS_KEY_ID = env_required("R2_ACCESS_KEY_ID")
+R2_SECRET_ACCESS_KEY = env_required("R2_SECRET_ACCESS_KEY")
+R2_BUCKET = env_required("R2_BUCKET")
+DB_PATH = os.getenv("DB_PATH", "db.sqlite3")
+
+# Shopier (optional)
+SHOPIER_API_KEY = os.getenv("SHOPIER_API_KEY", "")
+SHOPIER_API_SECRET = os.getenv("SHOPIER_API_SECRET", "")
+SHOPIER_ENABLED = bool(SHOPIER_API_KEY and SHOPIER_API_SECRET)
+
+# Shopify
+SHOPIFY_WEBHOOK_SECRET = os.getenv("SHOPIFY_WEBHOOK_SECRET", "752a72fad80823e98b9a82dd92f1878b21ae6149eebe39d73d2b93b72d3e920b")
+
+# Security: Rate limiting middleware
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        client_ip = request.client.host if request.client else "unknown"
+        current_time = time.time()
+        
+        # Clean old entries
+        rate_limit_store[client_ip] = [
+            t for t in rate_limit_store[client_ip] 
+            if current_time - t < RATE_LIMIT_WINDOW
+        ]
+        
+        # Check rate limit
+        if len(rate_limit_store[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+            return JSONResponse(
+                {"error": "Çok fazla istek. Lütfen bekleyin."},
+                status_code=429
+            )
+        
+        rate_limit_store[client_ip].append(current_time)
+        response = await call_next(request)
+        return response
+
+# Security: Add security headers
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # CSP temporarily disabled for Mapbox compatibility
+        # TODO: Re-enable with proper Mapbox domains after testing
+        return response
+
+app = FastAPI()
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=86400, same_site="lax", https_only=False)
+
+def db():
+    con = sqlite3.connect(DB_PATH, check_same_thread=False)
+    con.row_factory = sqlite3.Row
+    return con
+
+def sha256(s: str) -> str:
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+def now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+def parse_iso(dt_str: str):
+    if not dt_str:
+        return None
+    try:
+        return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+    except:
+        return None
+
+def is_open(unlock_at: str | None) -> bool:
+    dt = parse_iso(unlock_at)
+    if not dt:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) >= dt
+
+def require_capsule_id(request: Request) -> int | None:
+    return request.session.get("capsule_id")
+
+def safe_filename(name: str) -> str:
+    name = name or "file"
+    name = name.replace("\\", "_").replace("/", "_")
+    name = re.sub(r"[^a-zA-Z0-9._-]+", "_", name)
+    return name[:120]
+
+def init_db():
+    con = db()
+    cur = con.cursor()
+    
+    # Capsules table
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS capsules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token_hash TEXT NOT NULL UNIQUE,
+        pin_hash TEXT NOT NULL,
+        unlock_at TEXT
+    )
+    """)
+    
+    # Add missing columns (safe migration)
+    def add_column_if_missing(table, column, definition):
+        try:
+            cols = {r["name"] for r in cur.execute(f"PRAGMA table_info({table})").fetchall()}
+            if column not in cols:
+                cur.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
+                print(f"[MIGRATION] Added {table}.{column}")
+        except Exception as e:
+            print(f"[MIGRATION] Skip {table}.{column}: {e}")
+    
+    # Add new columns to capsules
+    add_column_if_missing("capsules", "capsule_number", "capsule_number TEXT")  # No UNIQUE - will add index later
+    add_column_if_missing("capsules", "lat", "lat REAL")
+    add_column_if_missing("capsules", "lng", "lng REAL")
+    add_column_if_missing("capsules", "location_name", "location_name TEXT")
+    add_column_if_missing("capsules", "capsule_title", "capsule_title TEXT")
+    add_column_if_missing("capsules", "is_public", "is_public INTEGER DEFAULT 0")  # Default 0 - not visible until paid
+    add_column_if_missing("capsules", "status", "status TEXT DEFAULT 'draft'")  # draft, locked, paid
+    add_column_if_missing("capsules", "created_at", "created_at TEXT")
+    
+    # Try to create unique index on capsule_number (may fail if duplicates exist)
+    try:
+        cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_capsule_number ON capsules(capsule_number) WHERE capsule_number IS NOT NULL")
+    except Exception as e:
+        print(f"[MIGRATION] Index creation skipped: {e}")
+    
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        capsule_id INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+    )
+    """)
+    
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        capsule_id INTEGER,
+        kind TEXT,
+        r2_key TEXT,
+        original_name TEXT,
+        content_type TEXT,
+        size_bytes INTEGER,
+        created_at TEXT,
+        FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+    )
+    """)
+    
+    # Orders table - stores order info for physical letter (PIN/Token in plain text for printing)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        capsule_id INTEGER NOT NULL,
+        capsule_number TEXT,
+        order_number TEXT UNIQUE,
+        
+        -- Plain text for mektup printing (only stored after payment)
+        token_plain TEXT,
+        pin_plain TEXT,
+        
+        -- Customer info for shipping
+        customer_name TEXT,
+        customer_email TEXT,
+        customer_phone TEXT,
+        shipping_address TEXT,
+        
+        -- Payment info
+        amount INTEGER,
+        payment_status TEXT DEFAULT 'pending',
+        payment_provider TEXT,
+        payment_id TEXT,
+        
+        -- Timestamps
+        created_at TEXT,
+        paid_at TEXT,
+        shipped_at TEXT,
+        
+        FOREIGN KEY(capsule_id) REFERENCES capsules(id)
+    )
+    """)
+    
+    con.commit()
+    con.close()
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
+
+# R2
+def r2_client():
+    return boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+    )
+
+def r2_put_bytes(key: str, data: bytes, content_type: str):
+    s3 = r2_client()
+    try:
+        s3.put_object(Bucket=R2_BUCKET, Key=key, Body=data, ContentType=content_type)
+    except Exception as e:
+        print("R2 PUT FAILED:", repr(e))
+        traceback.print_exc()
+        raise
+
+def r2_presigned_get(key: str, expires_sec: int = 600) -> str:
+    s3 = r2_client()
+    return s3.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={"Bucket": R2_BUCKET, "Key": key},
+        ExpiresIn=expires_sec,
+    )
+
+def count_notes(cur, capsule_id: int) -> int:
+    return cur.execute("SELECT COUNT(*) AS c FROM notes WHERE capsule_id=?", (capsule_id,)).fetchone()["c"]
+
+def count_photos(cur, capsule_id: int) -> int:
+    return cur.execute("SELECT COUNT(*) AS c FROM media WHERE capsule_id=? AND kind='photo'", (capsule_id,)).fetchone()["c"]
+
+def count_videos(cur, capsule_id: int) -> int:
+    return cur.execute("SELECT COUNT(*) AS c FROM media WHERE capsule_id=? AND kind='video'", (capsule_id,)).fetchone()["c"]
+
+# Routes
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    return templates.TemplateResponse("map-landing.html", {"request": request})
+
+@app.get("/create", response_class=HTMLResponse)
+def create_page(request: Request):
+    return templates.TemplateResponse("create-capsule.html", {"request": request})
+
+@app.get("/gizlilik", response_class=HTMLResponse)
+def privacy_page(request: Request):
+    return templates.TemplateResponse("gizlilik.html", {"request": request})
+
+@app.get("/sss", response_class=HTMLResponse)
+def faq_page(request: Request):
+    return templates.TemplateResponse("sss.html", {"request": request})
+
+@app.get("/iletisim", response_class=HTMLResponse)
+def contact_page(request: Request):
+    return templates.TemplateResponse("iletisim.html", {"request": request})
+
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/", status_code=303)
+
+@app.get("/claim", response_class=HTMLResponse)
+def claim_page(request: Request, token: str = ""):
+    # Sanitize token for display (though it's hidden now)
+    safe_token = html.escape(token) if token else ""
+    return templates.TemplateResponse("claim.html", {"request": request, "token": safe_token, "error": ""})
+
+@app.post("/claim")
+def claim_submit(request: Request, token: str = Form(...), pin: str = Form(...)):
+    client_ip = request.client.host if request.client else "unknown"
+    current_time = time.time()
+    
+    # Brute force protection: max 5 attempts per minute
+    claim_attempts[client_ip] = [
+        t for t in claim_attempts[client_ip] 
+        if current_time - t < 60
+    ]
+    
+    if len(claim_attempts[client_ip]) >= CLAIM_RATE_LIMIT:
+        return templates.TemplateResponse(
+            "claim.html",
+            {"request": request, "token": token, "error": "Çok fazla deneme. 1 dakika bekleyin."},
+            status_code=429,
+        )
+    
+    claim_attempts[client_ip].append(current_time)
+    
+    # Input validation
+    if not token or len(token) > 100:
+        return templates.TemplateResponse(
+            "claim.html",
+            {"request": request, "token": "", "error": "Geçersiz token"},
+            status_code=400,
+        )
+    
+    if not pin or not pin.isdigit() or len(pin) != 6:
+        return templates.TemplateResponse(
+            "claim.html",
+            {"request": request, "token": token, "error": "PIN 6 haneli sayı olmalı"},
+            status_code=400,
+        )
+    
+    con = db()
+    cur = con.cursor()
+    row = cur.execute("SELECT * FROM capsules WHERE token_hash=?", (sha256(token),)).fetchone()
+    con.close()
+    
+    if (not row) or (row["pin_hash"] != sha256(pin)):
+        # Timing attack koruması: Her zaman aynı süre bekle
+        time.sleep(0.1)
+        return templates.TemplateResponse(
+            "claim.html",
+            {"request": request, "token": token, "error": "Token veya PIN hatalı"},
+            status_code=400,
+        )
+    
+    request.session["capsule_id"] = row["id"]
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+    capsule_id = require_capsule_id(request)
+    if not capsule_id:
+        return RedirectResponse(url="/", status_code=303)
+    
+    con = db()
+    cur = con.cursor()
+    cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
+    if not cap:
+        con.close()
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
+    
+    open_flag = is_open(cap["unlock_at"])
+    notes = cur.execute("SELECT * FROM notes WHERE capsule_id=? ORDER BY id", (capsule_id,)).fetchall()
+    photos = cur.execute("SELECT * FROM media WHERE capsule_id=? AND kind='photo' ORDER BY id", (capsule_id,)).fetchall()
+    video = cur.execute("SELECT * FROM media WHERE capsule_id=? AND kind='video' ORDER BY id", (capsule_id,)).fetchone()
+    notes_c = count_notes(cur, capsule_id)
+    photos_c = count_photos(cur, capsule_id)
+    videos_c = count_videos(cur, capsule_id)
+    con.close()
+    
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request, "capsule": cap, "open": open_flag,
+        "notes": notes, "photos": photos, "video": video,
+        "notes_c": notes_c, "photos_c": photos_c, "videos_c": videos_c,
+        "MAX_NOTES": MAX_NOTES, "MAX_PHOTOS": MAX_PHOTOS, "MAX_VIDEOS": MAX_VIDEOS,
+    })
+
+# Helper: Generate unique 6-digit capsule number
+def generate_capsule_number(cur) -> str:
+    """Generate a unique 6-digit capsule number"""
+    for _ in range(100):  # Max 100 attempts
+        num = f"{secrets.randbelow(900000) + 100000}"  # 100000-999999
+        try:
+            existing = cur.execute("SELECT id FROM capsules WHERE capsule_number=?", (num,)).fetchone()
+            if not existing:
+                return num
+        except Exception:
+            # Column might not exist yet, just return the number
+            return num
+    raise RuntimeError("Could not generate unique capsule number")
+
+# API Routes
+
+# Step 1: Create draft capsule (after location selection + date)
+@app.post("/api/capsules/create-draft")
+async def api_create_draft_capsule(
+    request: Request,
+    lat: float = Form(...),
+    lng: float = Form(...),
+    title: str = Form(...),
+    unlock_at: str = Form(...),
+    location_name: str = Form(...)
+):
+    """Create a draft capsule - user will add content, then pay to publish"""
+    try:
+        token = secrets.token_urlsafe(24)
+        pin = f"{secrets.randbelow(10**6):06d}"
+        token_hash = sha256(token)
+        pin_hash = sha256(pin)
+        
+        # Parse date
+        dt_local_naive = datetime.fromisoformat(unlock_at)
+        dt_local = dt_local_naive.replace(tzinfo=TZ_TR)
+        dt_utc = dt_local.astimezone(timezone.utc)
+        
+        con = db()
+        cur = con.cursor()
+        
+        # Check if capsule_number column exists
+        cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
+        has_capsule_number = "capsule_number" in cols
+        has_status = "status" in cols
+        has_created_at = "created_at" in cols
+        
+        # Generate unique 6-digit capsule number
+        capsule_number = generate_capsule_number(cur) if has_capsule_number else str(secrets.randbelow(900000) + 100000)
+        
+        # Build dynamic INSERT based on available columns
+        if has_capsule_number and has_status and has_created_at:
+            cur.execute("""
+                INSERT INTO capsules(capsule_number, token_hash, pin_hash, unlock_at, lat, lng, location_name, capsule_title, is_public, status, created_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
+            """, (capsule_number, token_hash, pin_hash, dt_utc.isoformat(), lat, lng, location_name, title, 0, 'draft', now_utc_iso()))
+        else:
+            # Fallback for old schema
+            cur.execute("""
+                INSERT INTO capsules(token_hash, pin_hash, unlock_at, lat, lng, location_name, capsule_title, is_public)
+                VALUES(?,?,?,?,?,?,?,?)
+            """, (token_hash, pin_hash, dt_utc.isoformat(), lat, lng, location_name, title, 0))
+        
+        capsule_id = cur.lastrowid
+        con.commit()
+        con.close()
+        
+        # Set session so user can access dashboard
+        request.session["capsule_id"] = capsule_id
+        
+        return JSONResponse({
+            "success": True,
+            "capsule_id": capsule_id,
+            "capsule_number": capsule_number,
+            "token": token,
+            "pin": pin,
+            "redirect": "/dashboard"
+        })
+    except Exception as e:
+        print(f"Error creating draft: {e}")
+        traceback.print_exc()
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+# Step 2: Pay and lock capsule (makes it visible on map)
+@app.post("/api/capsules/pay-and-lock")
+async def api_pay_and_lock(request: Request):
+    """Process payment and lock capsule - makes it visible on map"""
+    capsule_id = require_capsule_id(request)
+    if not capsule_id:
+        return JSONResponse({"success": False, "error": "Oturum bulunamadı"}, status_code=401)
+    
+    try:
+        con = db()
+        cur = con.cursor()
+        
+        # Check which columns exist
+        cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
+        has_status = "status" in cols
+        has_capsule_number = "capsule_number" in cols
+        
+        cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
+        if not cap:
+            con.close()
+            return JSONResponse({"success": False, "error": "Kapsül bulunamadı"}, status_code=404)
+        
+        # Check if already paid (if status column exists)
+        if has_status and cap["status"] == "paid":
+            con.close()
+            return JSONResponse({"success": False, "error": "Kapsül zaten ödenmiş"}, status_code=400)
+        
+        # TODO: Real payment integration here
+        # For now, simulate successful payment
+        
+        # Update capsule: mark as paid and make public
+        if has_status:
+            cur.execute("""
+                UPDATE capsules 
+                SET status='paid', is_public=1 
+                WHERE id=?
+            """, (capsule_id,))
+        else:
+            cur.execute("""
+                UPDATE capsules 
+                SET is_public=1 
+                WHERE id=?
+            """, (capsule_id,))
+        
+        con.commit()
+        
+        # Get capsule number (if exists)
+        capsule_number = cap["capsule_number"] if has_capsule_number else str(capsule_id)
+        
+        con.close()
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Ödeme başarılı! Kapsülünüz haritada görünür.",
+            "capsule_number": capsule_number
+        })
+    except Exception as e:
+        print(f"Error in payment: {e}")
+        traceback.print_exc()
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+# Delete unpaid capsule (cleanup)
+@app.post("/api/capsules/delete-draft")
+async def api_delete_draft(request: Request):
+    """Delete an unpaid draft capsule and all its content"""
+    capsule_id = require_capsule_id(request)
+    if not capsule_id:
+        return JSONResponse({"success": False, "error": "Oturum bulunamadı"}, status_code=401)
+    
+    try:
+        con = db()
+        cur = con.cursor()
+        
+        # Check which columns exist
+        cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
+        has_status = "status" in cols
+        
+        cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
+        if not cap:
+            con.close()
+            return JSONResponse({"success": False, "error": "Kapsül bulunamadı"}, status_code=404)
+        
+        # Check if paid (if status column exists)
+        if has_status and cap["status"] == "paid":
+            con.close()
+            return JSONResponse({"success": False, "error": "Ödenmiş kapsül silinemez"}, status_code=400)
+        
+        # Delete media from R2
+        media_items = cur.execute("SELECT r2_key FROM media WHERE capsule_id=?", (capsule_id,)).fetchall()
+        s3 = r2_client()
+        for item in media_items:
+            try:
+                s3.delete_object(Bucket=R2_BUCKET, Key=item["r2_key"])
+            except Exception as e:
+                print(f"Failed to delete R2 object {item['r2_key']}: {e}")
+        
+        # Delete from database
+        cur.execute("DELETE FROM media WHERE capsule_id=?", (capsule_id,))
+        cur.execute("DELETE FROM notes WHERE capsule_id=?", (capsule_id,))
+        cur.execute("DELETE FROM capsules WHERE id=?", (capsule_id,))
+        
+        con.commit()
+        con.close()
+        
+        # Clear session
+        request.session.clear()
+        
+        return JSONResponse({"success": True, "message": "Kapsül silindi"})
+    except Exception as e:
+        print(f"Error deleting draft: {e}")
+        traceback.print_exc()
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+# Legacy endpoint - redirect to new flow
+@app.post("/api/capsules/create")
+async def api_create_capsule(
+    request: Request,
+    lat: float = Form(...),
+    lng: float = Form(...),
+    title: str = Form(...),
+    unlock_at: str = Form(...),
+    location_name: str = Form(...)
+):
+    """Legacy endpoint - now creates draft and redirects to dashboard"""
+    return await api_create_draft_capsule(request, lat, lng, title, unlock_at, location_name)
+
+@app.get("/api/capsules/public")
+def api_get_public_capsules():
+    try:
+        con = db()
+        cur = con.cursor()
+        
+        # Check which columns exist
+        cols = {r["name"] for r in cur.execute("PRAGMA table_info(capsules)").fetchall()}
+        has_status = "status" in cols
+        
+        # Build query - show capsules that are public AND (paid OR status is NULL for old capsules)
+        if has_status:
+            capsules = cur.execute("""
+                SELECT id, lat, lng, capsule_title, unlock_at, location_name 
+                FROM capsules 
+                WHERE is_public=1 AND (status='paid' OR status IS NULL) AND lat IS NOT NULL AND lng IS NOT NULL
+            """).fetchall()
+        else:
+            capsules = cur.execute("""
+                SELECT id, lat, lng, capsule_title, unlock_at, location_name 
+                FROM capsules 
+                WHERE is_public=1 AND lat IS NOT NULL AND lng IS NOT NULL
+            """).fetchall()
+        
+        con.close()
+        
+        result = []
+        for cap in capsules:
+            unlock_dt = parse_iso(cap["unlock_at"])
+            is_open_flag = is_open(cap["unlock_at"])
+            
+            # Handle None title
+            cap_title = cap["capsule_title"] or "İsimsiz Kapsül"
+            title_masked = cap_title[:20] + "..." if len(cap_title) > 20 else cap_title
+            
+            result.append({
+                "id": cap["id"],
+                "lat": cap["lat"],
+                "lng": cap["lng"],
+                "title": title_masked,
+                "city": cap["location_name"] or "Bilinmeyen",
+                "unlock_at": unlock_dt.strftime("%d %B %Y") if unlock_dt else "Bilinmiyor",
+                "status": "open" if is_open_flag else "locked"
+            })
+        
+        return JSONResponse({"capsules": result})
+    except Exception as e:
+        print(f"Error: {e}")
+        traceback.print_exc()
+        return JSONResponse({"capsules": []})
+
+@app.get("/success")
+def success_page(request: Request, token: str = "", pin: str = ""):
+    qr_code = ""
+    
+    # Generate QR code from token
+    if token:
+        try:
+            claim_url = f"{str(request.base_url).rstrip('/')}/claim?token={token}"
+            qr = qrcode.QRCode(version=1, box_size=10, border=4)
+            qr.add_data(claim_url)
+            qr.make(fit=True)
+            
+            img = qr.make_image(fill_color="black", back_color="white")
+            buffer = io.BytesIO()
+            img.save(buffer, format='PNG')
+            qr_code = f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
+        except Exception as e:
+            print(f"QR generation error: {e}")
+    
+    return templates.TemplateResponse("success.html", {
+        "request": request,
+        "token": token,
+        "pin": pin,
+        "qr_code": qr_code
+    })
+
+# Actions (keep existing add-note, upload-photo, etc)
+@app.post("/set-unlock")
+def set_unlock(request: Request, unlock_at: str = Form(...)):
+    capsule_id = require_capsule_id(request)
+    if not capsule_id:
+        return RedirectResponse(url="/", status_code=303)
+    
+    try:
+        dt_local_naive = datetime.fromisoformat(unlock_at)
+        dt_local = dt_local_naive.replace(tzinfo=TZ_TR)
+        dt_utc = dt_local.astimezone(timezone.utc)
+    except Exception:
+        return HTMLResponse("Tarih formatı hatalı.", status_code=400)
+    
+    con = db()
+    cur = con.cursor()
+    cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
+    if not cap:
+        con.close()
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
+    
+    if is_open(cap["unlock_at"]):
+        con.close()
+        return HTMLResponse("Kapsül açılmış, zaman değiştirilemez.", status_code=400)
+    
+    cur.execute("UPDATE capsules SET unlock_at=? WHERE id=?", (dt_utc.isoformat(), capsule_id))
+    con.commit()
+    con.close()
+    
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@app.post("/add-note")
+def add_note(request: Request, text: str = Form(...)):
+    capsule_id = require_capsule_id(request)
+    if not capsule_id:
+        return RedirectResponse(url="/", status_code=303)
+    
+    txt = (text or "").strip()
+    if not txt:
+        return HTMLResponse("Boş metin eklenemez.", status_code=400)
+    
+    # Security: Max length limit (5000 chars)
+    if len(txt) > 5000:
+        return HTMLResponse("Metin çok uzun (max 5000 karakter).", status_code=400)
+    
+    # Security: Sanitize HTML (XSS prevention) - store as-is but escape on display
+    # Note: Jinja2 auto-escapes by default, but we can also escape here
+    # txt = html.escape(txt)  # Uncomment if not using Jinja2 autoescape
+    
+    con = db()
+    cur = con.cursor()
+    cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
+    if not cap:
+        con.close()
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
+    
+    if is_open(cap["unlock_at"]):
+        con.close()
+        return HTMLResponse("Kapsül açılmış, artık metin eklenemez.", status_code=400)
+    
+    if count_notes(cur, capsule_id) >= MAX_NOTES:
+        con.close()
+        return HTMLResponse("Metin limiti doldu (5/5).", status_code=400)
+    
+    cur.execute(
+        "INSERT INTO notes(capsule_id, text, created_at) VALUES(?,?,?)",
+        (capsule_id, txt, now_utc_iso()),
+    )
+    con.commit()
+    con.close()
+    
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@app.post("/upload/photo")
+async def upload_photo(request: Request, file: UploadFile = File(...)):
+    capsule_id = require_capsule_id(request)
+    if not capsule_id:
+        return RedirectResponse(url="/", status_code=303)
+    
+    if file.content_type not in ALLOWED_PHOTO:
+        return HTMLResponse("Geçersiz foto formatı. (jpg/png/webp)", status_code=400)
+    
+    con = db()
+    cur = con.cursor()
+    cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
+    if not cap:
+        con.close()
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
+    
+    if is_open(cap["unlock_at"]):
+        con.close()
+        return HTMLResponse("Kapsül açılmış, artık foto yüklenemez.", status_code=400)
+    
+    if count_photos(cur, capsule_id) >= MAX_PHOTOS:
+        con.close()
+        return HTMLResponse("Foto limit doldu (10/10).", status_code=400)
+    
+    data = await file.read()
+    if len(data) > MAX_PHOTO_BYTES:
+        con.close()
+        return HTMLResponse("Foto çok büyük (max 10MB).", status_code=400)
+    
+    # Security: Verify magic bytes (file signature)
+    is_valid = False
+    if file.content_type == "image/jpeg" and data[:3] == b'\xff\xd8\xff':
+        is_valid = True
+        ext = ".jpg"
+    elif file.content_type == "image/png" and data[:8] == b'\x89PNG\r\n\x1a\n':
+        is_valid = True
+        ext = ".png"
+    elif file.content_type == "image/webp" and data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        is_valid = True
+        ext = ".webp"
+    
+    if not is_valid:
+        con.close()
+        return HTMLResponse("Dosya içeriği format ile uyuşmuyor.", status_code=400)
+    
+    original = safe_filename(file.filename)
+    
+    # Use capsule_number for R2 path (fallback to capsule_id if not available)
+    try:
+        folder_id = cap["capsule_number"] if cap["capsule_number"] else str(capsule_id)
+    except (KeyError, IndexError):
+        folder_id = str(capsule_id)
+    key = f"capsules/{folder_id}/photos/{secrets.token_urlsafe(16)}{ext}"
+    
+    try:
+        r2_put_bytes(key=key, data=data, content_type=file.content_type)
+    except Exception:
+        con.close()
+        return HTMLResponse("Storage hatası: R2 upload başarısız.", status_code=502)
+    
+    cur.execute(
+        """INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (capsule_id, "photo", key, original, file.content_type, len(data), now_utc_iso()),
+    )
+    con.commit()
+    con.close()
+    
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@app.post("/upload/video")
+async def upload_video(request: Request, file: UploadFile = File(...)):
+    capsule_id = require_capsule_id(request)
+    if not capsule_id:
+        return RedirectResponse(url="/", status_code=303)
+    
+    if file.content_type not in ALLOWED_VIDEO:
+        return HTMLResponse("Geçersiz video formatı. (mp4/webm/mov)", status_code=400)
+    
+    con = db()
+    cur = con.cursor()
+    cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
+    if not cap:
+        con.close()
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
+    
+    if is_open(cap["unlock_at"]):
+        con.close()
+        return HTMLResponse("Kapsül açılmış, artık video yüklenemez.", status_code=400)
+    
+    if count_videos(cur, capsule_id) >= MAX_VIDEOS:
+        con.close()
+        return HTMLResponse("Video limiti doldu (1/1).", status_code=400)
+    
+    data = await file.read()
+    if len(data) > MAX_VIDEO_BYTES:
+        con.close()
+        return HTMLResponse("Video çok büyük (max 80MB).", status_code=400)
+    
+    # Security: Verify magic bytes for video files
+    is_valid = False
+    if file.content_type == "video/mp4":
+        # MP4: ftyp box at offset 4
+        if len(data) > 12 and data[4:8] == b'ftyp':
+            is_valid = True
+        ext = ".mp4"
+    elif file.content_type == "video/webm":
+        # WebM: starts with EBML header
+        if len(data) > 4 and data[:4] == b'\x1a\x45\xdf\xa3':
+            is_valid = True
+        ext = ".webm"
+    elif file.content_type == "video/quicktime":
+        # MOV: ftyp or moov box
+        if len(data) > 12 and (data[4:8] == b'ftyp' or data[4:8] == b'moov'):
+            is_valid = True
+        ext = ".mov"
+    
+    if not is_valid:
+        con.close()
+        return HTMLResponse("Dosya içeriği format ile uyuşmuyor.", status_code=400)
+    
+    original = safe_filename(file.filename)
+    
+    # Use capsule_number for R2 path (fallback to capsule_id if not available)
+    try:
+        folder_id = cap["capsule_number"] if cap["capsule_number"] else str(capsule_id)
+    except (KeyError, IndexError):
+        folder_id = str(capsule_id)
+    key = f"capsules/{folder_id}/videos/{secrets.token_urlsafe(16)}{ext}"
+    
+    try:
+        r2_put_bytes(key=key, data=data, content_type=file.content_type)
+    except Exception:
+        con.close()
+        return HTMLResponse("Storage hatası: R2 upload başarısız.", status_code=502)
+    
+    cur.execute(
+        """INSERT INTO media(capsule_id, kind, r2_key, original_name, content_type, size_bytes, created_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (capsule_id, "video", key, original, file.content_type, len(data), now_utc_iso()),
+    )
+    con.commit()
+    con.close()
+    
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@app.get("/m/{media_id}")
+def open_media(request: Request, media_id: int):
+    capsule_id = require_capsule_id(request)
+    if not capsule_id:
+        return HTMLResponse("Yetkisiz.", status_code=403)
+    
+    con = db()
+    cur = con.cursor()
+    
+    cap = cur.execute("SELECT * FROM capsules WHERE id=?", (capsule_id,)).fetchone()
+    if not cap or (not is_open(cap["unlock_at"])):
+        con.close()
+        return HTMLResponse("Kilitli.", status_code=403)
+    
+    m = cur.execute(
+        "SELECT * FROM media WHERE id=? AND capsule_id=?",
+        (media_id, capsule_id),
+    ).fetchone()
+    con.close()
+    
+    if not m:
+        return HTMLResponse("Bulunamadı.", status_code=404)
+    
+    url = r2_presigned_get(m["r2_key"], expires_sec=600)
+    return RedirectResponse(url=url, status_code=302)
+
+
+# ========================
+# SHOPIFY WEBHOOK
+# ========================
+
+def verify_shopify_webhook(data: bytes, hmac_header: str) -> bool:
+    """Verify webhook is from Shopify"""
+    calculated = hmac.new(
+        SHOPIFY_WEBHOOK_SECRET.encode('utf-8'),
+        data,
+        hashlib.sha256
+    ).digest()
+    calculated_b64 = base64.b64encode(calculated).decode('utf-8')
+    return hmac.compare_digest(calculated_b64, hmac_header)
+
+@app.post("/api/shopify/webhook")
+async def shopify_webhook(request: Request):
+    """Handle Shopify order webhook"""
+    try:
+        # Get raw body
+        body = await request.body()
+        
+        # Verify webhook signature
+        hmac_header = request.headers.get("X-Shopify-Hmac-Sha256", "")
+        if not verify_shopify_webhook(body, hmac_header):
+            print("[SHOPIFY] Invalid webhook signature")
+            return JSONResponse({"error": "Invalid signature"}, status_code=401)
+        
+        # Parse order data
+        data = json.loads(body)
+        
+        order_id = data.get("id")
+        order_number = data.get("order_number")
+        email = data.get("email", "")
+        phone = data.get("phone", "")
+        note = data.get("note", "")  # Kapsül numarası buradan gelecek
+        total_price = data.get("total_price", "0")
+        
+        # Shipping info
+        shipping = data.get("shipping_address", {})
+        customer_name = f"{shipping.get('first_name', '')} {shipping.get('last_name', '')}".strip()
+        shipping_address = f"{shipping.get('address1', '')}, {shipping.get('city', '')} {shipping.get('zip', '')}"
+        
+        # Extract capsule number from note
+        capsule_number = None
+        if note:
+            # Try to find 6-digit number in note
+            import re
+            match = re.search(r'\b(\d{6})\b', note)
+            if match:
+                capsule_number = match.group(1)
+        
+        print(f"[SHOPIFY] Order received: #{order_number}, Note: {note}, Capsule: {capsule_number}")
+        
+        # Save to database
+        con = db()
+        cur = con.cursor()
+        
+        # Find capsule if capsule_number provided
+        capsule_id = None
+        if capsule_number:
+            cap = cur.execute("SELECT id FROM capsules WHERE capsule_number=?", (capsule_number,)).fetchone()
+            if cap:
+                capsule_id = cap["id"]
+        
+        # Insert order
+        cur.execute("""
+            INSERT INTO orders (
+                capsule_id, capsule_number, order_number,
+                customer_name, customer_email, customer_phone, shipping_address,
+                amount, payment_status, payment_provider, payment_id,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            capsule_id, capsule_number, str(order_number),
+            customer_name, email, phone, shipping_address,
+            int(float(total_price)), "paid", "shopify", str(order_id),
+            now_utc_iso()
+        ))
+        
+        con.commit()
+        con.close()
+        
+        return JSONResponse({"success": True})
+        
+    except Exception as e:
+        print(f"[SHOPIFY] Webhook error: {e}")
+        traceback.print_exc()
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ========================
+# ADMIN - ORDERS PAGE
+# ========================
+
+@app.get("/admin/orders", response_class=HTMLResponse)
+def admin_orders(request: Request, p: str = Query(default="")):
+    if p != ADMIN_PASSWORD:
+        return HTMLResponse("Yetkisiz. Kullanım: /admin/orders?p=ADMIN_PASSWORD", status_code=403)
+    
+    con = db()
+    cur = con.cursor()
+    
+    # Get all orders
+    orders = cur.execute("""
+        SELECT o.*, c.capsule_title, c.token_hash, c.pin_hash
+        FROM orders o
+        LEFT JOIN capsules c ON o.capsule_id = c.id
+        ORDER BY o.created_at DESC
+    """).fetchall()
+    
+    con.close()
+    
+    return templates.TemplateResponse("admin-orders.html", {
+        "request": request,
+        "orders": orders,
+        "p": p
+    })
+
+@app.post("/admin/orders/approve/{order_id}")
+def admin_approve_order(request: Request, order_id: int, p: str = Form(...)):
+    if p != ADMIN_PASSWORD:
+        return HTMLResponse("Yetkisiz", status_code=403)
+    
+    con = db()
+    cur = con.cursor()
+    
+    # Get order
+    order = cur.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not order:
+        con.close()
+        return HTMLResponse("Sipariş bulunamadı", status_code=404)
+    
+    # If capsule linked, activate it
+    if order["capsule_id"]:
+        cur.execute("""
+            UPDATE capsules 
+            SET status='paid', is_public=1 
+            WHERE id=?
+        """, (order["capsule_id"],))
+    
+    # Update order status
+    cur.execute("""
+        UPDATE orders 
+        SET payment_status='approved', paid_at=?
+        WHERE id=?
+    """, (now_utc_iso(), order_id))
+    
+    con.commit()
+    con.close()
+    
+    return RedirectResponse(url=f"/admin/orders?p={p}", status_code=303)
+
+@app.post("/admin/orders/link/{order_id}")
+def admin_link_order(request: Request, order_id: int, p: str = Form(...), capsule_number: str = Form(...)):
+    """Manually link order to capsule"""
+    if p != ADMIN_PASSWORD:
+        return HTMLResponse("Yetkisiz", status_code=403)
+    
+    con = db()
+    cur = con.cursor()
+    
+    # Find capsule
+    cap = cur.execute("SELECT id FROM capsules WHERE capsule_number=?", (capsule_number,)).fetchone()
+    if not cap:
+        con.close()
+        return HTMLResponse(f"Kapsül bulunamadı: {capsule_number}", status_code=404)
+    
+    # Update order
+    cur.execute("""
+        UPDATE orders 
+        SET capsule_id=?, capsule_number=?
+        WHERE id=?
+    """, (cap["id"], capsule_number, order_id))
+    
+    con.commit()
+    con.close()
+    
+    return RedirectResponse(url=f"/admin/orders?p={p}", status_code=303)

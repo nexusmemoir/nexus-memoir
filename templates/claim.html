@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kapsülü Aç - NexusMemoir</title>
+    <link rel="icon" type="image/png" href="/static/images/nexusmemoir-logo.png">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <style>
+        #neuralBg {
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="neuralBg"></canvas>
+    
+    <div class="claim-container">
+        <div class="claim-card">
+            <div class="logo-section">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" style="width: 80px; height: 80px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.6));">
+                <h1 class="logo-text">NexusMemoir</h1>
+                <p class="logo-subtitle">Zamanı kilitle. Zihnini sakla.</p>
+            </div>
+
+            <div class="claim-content">
+                <h2>🔐 Kapsülünü Aç</h2>
+                <p class="claim-description">PIN kodunu girerek kapsülüne erişebilirsin</p>
+
+                {% if error %}
+                <div class="error-message">
+                    <span class="error-icon">⚠️</span>
+                    <span>{{ error }}</span>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/claim" class="claim-form">
+                    <!-- Token hidden - güvenlik için kullanıcıya gösterilmiyor -->
+                    <input type="hidden" name="token" value="{{ token }}">
+
+                    <div class="form-group">
+                        <label for="pin">PIN Kodunuz (6 haneli)</label>
+                        <input 
+                            type="text" 
+                            id="pin" 
+                            name="pin" 
+                            placeholder="● ● ● ● ● ●"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            required
+                            autofocus
+                            style="font-size: 1.5rem; text-align: center; letter-spacing: 8px;"
+                        >
+                        <small>Kapsül oluştururken size verilen 6 haneli PIN</small>
+                    </div>
+
+                    <button type="submit" class="btn-primary btn-full">
+                        <span>Kapsülü Aç</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                </form>
+
+                <div class="claim-footer">
+                    <p>Kapsülün yok mu? <a href="/create">Hemen oluştur</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/neural-bg.js"></script>
+</body>
+</html>

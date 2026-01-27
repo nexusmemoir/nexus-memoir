@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kapsül Oluştur - NexusMemoir</title>
+    <link rel="icon" type="image/png" href="/static/images/nexusmemoir-logo.png">
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+        
+        /* Navbar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 1rem 2rem;
+        }
+        
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .logo img { width: 36px; height: 36px; }
+        .logo span { font-weight: 700; font-size: 1.1rem; }
+        
+        /* Main Container */
+        .main-container {
+            display: flex;
+            height: 100vh;
+            padding-top: 70px;
+        }
+        
+        /* Left Panel - Form */
+        .form-panel {
+            width: 420px;
+            min-width: 420px;
+            background: rgba(15, 15, 35, 0.98);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-header {
+            margin-bottom: 30px;
+        }
+        
+        .form-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .form-header p {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.95rem;
+        }
+        
+        /* Steps */
+        .step-indicator {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+        
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transition: all 0.3s;
+        }
+        
+        .step-dot.active {
+            background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+            box-shadow: 0 0 15px rgba(255, 107, 157, 0.5);
+        }
+        
+        .step-dot.completed {
+            background: #10b981;
+        }
+        
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #ff6b9d;
+            box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.2);
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 6px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+        }
+        
+        /* Location Display */
+        .location-display {
+            background: rgba(255, 107, 157, 0.1);
+            border: 1px solid rgba(255, 107, 157, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .location-display.empty {
+            background: rgba(255,255,255,0.04);
+            border: 1px dashed rgba(255,255,255,0.2);
+        }
+        
+        .location-display .icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        
+        .location-display .label {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 4px;
+        }
+        
+        .location-display .value {
+            font-weight: 600;
+            color: #ff6b9d;
+        }
+        
+        .location-display.empty .value {
+            color: rgba(255,255,255,0.4);
+        }
+        
+        /* Button */
+        .btn-primary {
+            width: 100%;
+            padding: 16px 24px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: auto;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Right Panel - Map */
+        .map-panel {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .map-instructions {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .map-instructions .icon {
+            font-size: 1.2rem;
+        }
+        
+        .map-instructions span {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        /* Digging Animation Overlay */
+        .dig-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 15, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        
+        .dig-animation {
+            text-align: center;
+        }
+        
+        .shovel {
+            font-size: 80px;
+            animation: dig 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes dig {
+            0%, 100% { transform: rotate(-20deg); }
+            50% { transform: rotate(20deg); }
+        }
+        
+        .dig-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 20px;
+            color: #ff6b9d;
+        }
+        
+        .dig-subtext {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.6);
+            margin-top: 10px;
+        }
+        
+        .capsule-code {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #ffa94d;
+            margin-top: 20px;
+            letter-spacing: 8px;
+            font-family: monospace;
+        }
+        
+        /* Mobile */
+        @media (max-width: 900px) {
+            .main-container {
+                flex-direction: column-reverse;
+            }
+            
+            .form-panel {
+                width: 100%;
+                min-width: unset;
+                height: 50vh;
+                border-right: none;
+                border-top: 1px solid rgba(255,255,255,0.08);
+            }
+            
+            .map-panel {
+                height: 50vh;
+            }
+            
+            .map-instructions span {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir">
+                <span>NexusMemoir</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel - Form -->
+        <div class="form-panel">
+            <div class="form-header">
+                <h1>🎁 Kapsül Oluştur</h1>
+                <p>Haritada bir yer seç, anılarını göm</p>
+            </div>
+            
+            <div class="step-indicator">
+                <div class="step-dot active" id="dot1"></div>
+                <div class="step-dot" id="dot2"></div>
+            </div>
+            
+            <!-- Location Display -->
+            <div class="location-display empty" id="locationDisplay">
+                <div class="icon">📍</div>
+                <div class="label">Seçilen Konum</div>
+                <div class="value" id="locationText">Haritadan bir yer seçin</div>
+            </div>
+            
+            <!-- Form -->
+            <div class="form-group">
+                <label>Kapsül Başlığı</label>
+                <input type="text" id="capsuleTitle" placeholder="Örn: 2030'daki Bana Mektup" maxlength="100">
+                <small>Bu başlık haritada görünecek</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Açılış Tarihi ve Saati</label>
+                <input type="datetime-local" id="unlockDate">
+                <small>Kapsül bu tarihte açılabilir hale gelecek</small>
+            </div>
+            
+            <button class="btn-primary" id="btnDig" disabled onclick="startDigging()">
+                <span>⛏️</span>
+                <span>Kapsül İçin Yer Kaz</span>
+            </button>
+        </div>
+        
+        <!-- Right Panel - Map -->
+        <div class="map-panel">
+            <div class="map-instructions">
+                <span class="icon">👆</span>
+                <span>Haritada çift tıkla (mobilde 3 kez dokun)</span>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+    
+    <!-- Digging Animation Overlay -->
+    <div class="dig-overlay" id="digOverlay">
+        <div class="dig-animation">
+            <div class="shovel" id="digIcon">⛏️</div>
+            <div class="dig-text" id="digText">Kapsül için yer kazılıyor...</div>
+            <div class="dig-subtext" id="digSubtext">Lütfen bekleyin</div>
+            <div class="capsule-code" id="capsuleCodeDisplay"></div>
+        </div>
+    </div>
+
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibmV4dXNtZW1vaXIiLCJhIjoiY21rczVsbnpiMTZuejNjcXk4M2Q4c2Z4bSJ9.Itm0AFzYPjurF_IBe_GNpQ';
+        
+        let selectedLat = null;
+        let selectedLng = null;
+        let selectedLocationName = '';
+        let currentMarker = null;
+        
+        // Initialize Map
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'carto': {
+                        type: 'raster',
+                        tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+                        tileSize: 256
+                    }
+                },
+                layers: [
+                    { id: 'carto-tiles', type: 'raster', source: 'carto' }
+                ]
+            },
+            center: [35, 39],
+            zoom: 5
+        });
+        
+        map.addControl(new mapboxgl.NavigationControl());
+        
+        // Double-click to select location (desktop)
+        map.on('dblclick', function(e) {
+            e.preventDefault();
+            selectLocation(e.lngLat.lat, e.lngLat.lng);
+        });
+        
+        // Triple-tap for mobile
+        let tapCount = 0;
+        let tapTimer = null;
+        
+        map.on('click', function(e) {
+            tapCount++;
+            if (tapCount === 3) {
+                selectLocation(e.lngLat.lat, e.lngLat.lng);
+                tapCount = 0;
+                clearTimeout(tapTimer);
+            } else {
+                clearTimeout(tapTimer);
+                tapTimer = setTimeout(() => { tapCount = 0; }, 500);
+            }
+        });
+        
+        // Select location
+        async function selectLocation(lat, lng) {
+            selectedLat = lat;
+            selectedLng = lng;
+            
+            // Remove old marker
+            if (currentMarker) currentMarker.remove();
+            
+            // Add new marker
+            const el = document.createElement('div');
+            el.innerHTML = '📍';
+            el.style.fontSize = '40px';
+            el.style.cursor = 'pointer';
+            
+            currentMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+                .setLngLat([lng, lat])
+                .addTo(map);
+            
+            // Get location name
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await response.json();
+                selectedLocationName = data.address?.city || data.address?.town || data.address?.state || data.address?.country || 'Bilinmeyen Konum';
+            } catch (e) {
+                selectedLocationName = 'Özel Konum';
+            }
+            
+            // Update UI
+            const locationDisplay = document.getElementById('locationDisplay');
+            locationDisplay.classList.remove('empty');
+            document.getElementById('locationText').textContent = selectedLocationName;
+            
+            // Update step indicator
+            document.getElementById('dot1').classList.add('completed');
+            document.getElementById('dot2').classList.add('active');
+            
+            // Enable button if all fields filled
+            checkFormValidity();
+        }
+        
+        // Check form validity
+        function checkFormValidity() {
+            const title = document.getElementById('capsuleTitle').value.trim();
+            const date = document.getElementById('unlockDate').value;
+            const btn = document.getElementById('btnDig');
+            
+            btn.disabled = !(selectedLat && selectedLng && title && date);
+        }
+        
+        document.getElementById('capsuleTitle').addEventListener('input', checkFormValidity);
+        document.getElementById('unlockDate').addEventListener('change', checkFormValidity);
+        
+        // Set minimum date to now
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('unlockDate').min = now.toISOString().slice(0, 16);
+        
+        // Start digging animation and create capsule
+        async function startDigging() {
+            const title = document.getElementById('capsuleTitle').value.trim();
+            const unlockDate = document.getElementById('unlockDate').value;
+            
+            if (!selectedLat || !selectedLng || !title || !unlockDate) {
+                alert('Lütfen tüm alanları doldurun');
+                return;
+            }
+            
+            // Show digging overlay
+            const overlay = document.getElementById('digOverlay');
+            overlay.style.display = 'flex';
+            
+            try {
+                // Wait for animation effect
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Update text
+                document.getElementById('digText').textContent = 'Kapsül oluşturuluyor...';
+                
+                // Create capsule via API
+                const formData = new FormData();
+                formData.append('lat', selectedLat);
+                formData.append('lng', selectedLng);
+                formData.append('title', title);
+                formData.append('unlock_at', unlockDate);
+                formData.append('location_name', selectedLocationName);
+                
+                const response = await fetch('/api/capsules/create-draft', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show success
+                    document.getElementById('digIcon').textContent = '✅';
+                    document.getElementById('digIcon').style.animation = 'none';
+                    document.getElementById('digText').textContent = 'Kapsül yeri hazır!';
+                    document.getElementById('digSubtext').textContent = 'Kapsül Numaranız:';
+                    document.getElementById('capsuleCodeDisplay').textContent = data.capsule_number;
+                    
+                    // Store credentials in sessionStorage for later use
+                    sessionStorage.setItem('capsule_token', data.token);
+                    sessionStorage.setItem('capsule_pin', data.pin);
+                    sessionStorage.setItem('capsule_number', data.capsule_number);
+                    
+                    // Wait and redirect to dashboard
+                    await new Promise(resolve => setTimeout(resolve, 2500));
+                    window.location.href = '/dashboard';
+                } else {
+                    throw new Error(data.error || 'Bilinmeyen hata');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                overlay.style.display = 'none';
+                alert('Hata oluştu: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusMemoir - Geleceğe Anı Kapsülü</title>
+    <link rel="icon" type="image/png" href="/static/images/nexusmemoir-logo.png">
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="/static/css/map-landing.css">
+</head>
+<body>
+    <canvas id="neuralBg"></canvas>
+    
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo" style="text-decoration: none; color: inherit;">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="logo-image">
+                <span class="logo-text">NexusMemoir</span>
+            </a>
+            <div class="nav-links">
+                <a href="#map">Haritayı Gör</a>
+                <a href="#pricing">Fiyatlar</a>
+                <a href="/create" class="btn-create">Kapsülünü Göm</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-compact">
+        <div class="hero-content-compact">
+            <div class="hero-badge">
+                <span class="badge-icon">🎁</span>
+                <span>Geleceğe Anı Kapsülü</span>
+            </div>
+            <h1 class="hero-title-compact">
+                Geleceğe<br>
+                <span class="gradient-text">Anı Kapsülü Bırak</span>
+            </h1>
+            <p class="hero-subtitle-compact">
+                Haritada iz bırak. Sevdiklerine zaman kapsülü göm, gelecekte açılsın.
+                <strong>Haritada sonsuza dek kalır.</strong>
+            </p>
+            <div class="hero-stats-compact">
+                <div class="stat-compact">
+                    <span class="stat-number-compact" id="totalCapsules">0</span>
+                    <span class="stat-label-compact">Gömülü Kapsül</span>
+                </div>
+                <div class="stat-compact">
+                    <span class="stat-number-compact" id="countries">0</span>
+                    <span class="stat-label-compact">Şehir</span>
+                </div>
+                <div class="stat-compact">
+                    <span class="stat-number-compact pulse-live">●</span>
+                    <span class="stat-label-compact">Canlı Harita</span>
+                </div>
+            </div>
+            <a href="/create" class="btn-primary-hero">
+                <span>Kapsülünü Oluştur</span>
+                <span class="btn-arrow">→</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- Interactive Map Section -->
+    <section id="map" class="map-section">
+        <div class="map-header">
+            <h2>🌍 Canlı Kapsül Haritası</h2>
+            <p>Dünya çapında gömülmüş anıları keşfet • Real-time güncellemeler</p>
+        </div>
+        
+        <div id="mainMap" class="main-map"></div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works-simple">
+        <h2>Nasıl Çalışır?</h2>
+        <div class="steps-simple">
+            <div class="step-simple">
+                <div class="step-emoji">📍</div>
+                <h3>Yer Seç</h3>
+                <p>Haritada özel bir lokasyon seç</p>
+            </div>
+            <div class="step-simple">
+                <div class="step-emoji">✏️</div>
+                <h3>İçerik Ekle</h3>
+                <p>Fotoğraf, video, mesajlarını yükle</p>
+            </div>
+            <div class="step-simple">
+                <div class="step-emoji">⏰</div>
+                <h3>Tarih Belirle</h3>
+                <p>Ne zaman açılacağını ayarla</p>
+            </div>
+            <div class="step-simple">
+                <div class="step-emoji">🎈</div>
+                <h3>Göm & Paylaş</h3>
+                <p>Kapsülün haritada görünsün!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="pricing-simple">
+        <h2>Geleceğe Anı Kapsülü</h2>
+        <p class="pricing-subtitle">Haritada kalıcı bir iz bırakın</p>
+        <div class="pricing-single">
+            <div class="price-card-single" style="border-color: #ff6b9d;">
+                <div class="price-badge">🎁 Anı Kapsülü</div>
+                <div class="price-amount-large">₺499</div>
+                <div class="price-subtitle-text">Haritada sonsuza dek kalır</div>
+                <div class="price-features-list">
+                    <div>✅ 5 metin notu</div>
+                    <div>✅ 10 fotoğraf</div>
+                    <div>✅ 1 video</div>
+                    <div>✅ Gelecekte açılır</div>
+                    <div>✅ Haritada görünür</div>
+                    <div>✅ Ömür boyu saklama</div>
+                    <div style="color: #ffa94d; font-weight: 600;">📬 Özel tasarım fiziksel mektup</div>
+                </div>
+                <a href="/create" class="btn-primary-pricing">
+                    <span>Kapsülünü Oluştur</span>
+                    <span class="btn-arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Physical Letter Section -->
+    <section id="letter" class="letter-section">
+        <div class="letter-container">
+            <div class="letter-content">
+                <span class="letter-badge">📬 Fiziksel Hediye</span>
+                <h2>Özel Tasarım Mektup</h2>
+                <p class="letter-subtitle">Her kapsüle özel, sevdiklerinize verebileceğiniz fiziksel bir hatıra</p>
+                
+                <div class="letter-features">
+                    <div class="letter-feature">
+                        <span class="letter-feature-icon">🎨</span>
+                        <div>
+                            <h4>Özel Tasarım</h4>
+                            <p>Her mektup kapsülünüze özel tasarlanır</p>
+                        </div>
+                    </div>
+                    <div class="letter-feature">
+                        <span class="letter-feature-icon">📱</span>
+                        <div>
+                            <h4>QR Kod</h4>
+                            <p>Telefonla tarayarak kapsüle anında erişim</p>
+                        </div>
+                    </div>
+                    <div class="letter-feature">
+                        <span class="letter-feature-icon">🔐</span>
+                        <div>
+                            <h4>PIN Kodu</h4>
+                            <p>Güvenli erişim için 6 haneli özel PIN</p>
+                        </div>
+                    </div>
+                    <div class="letter-feature">
+                        <span class="letter-feature-icon">📍</span>
+                        <div>
+                            <h4>Konum Bilgisi</h4>
+                            <p>Kapsülün haritadaki yeri ve açılış tarihi</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <p class="letter-note">💌 Mektup, ödeme sonrası belirttiğiniz adrese gönderilir. Sevdiklerinize hediye edebilirsiniz!</p>
+            </div>
+            
+            <div class="letter-image-wrapper">
+                <div class="letter-image-placeholder" onclick="openLetterModal()">
+                    <div class="placeholder-content">
+                        <span class="placeholder-icon">💌</span>
+                        <span class="placeholder-text">Mektup Örneği</span>
+                        <span class="placeholder-hint">Tıkla ve büyüt</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Letter Modal -->
+    <div id="letterModal" class="letter-modal" onclick="closeLetterModal()">
+        <div class="letter-modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeLetterModal()">✕</button>
+            <div class="modal-placeholder">
+                <span class="modal-placeholder-icon">💌</span>
+                <span class="modal-placeholder-text">Mektup Görseli</span>
+                <p class="modal-placeholder-desc">Yakında eklenecek...</p>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Letter Section Styles */
+        .letter-section {
+            padding: 80px 24px;
+            background: linear-gradient(180deg, rgba(255,107,157,0.05) 0%, transparent 100%);
+        }
+        
+        .letter-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        
+        .letter-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .letter-content h2 {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #ff6b9d, #ffa94d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .letter-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 32px;
+        }
+        
+        .letter-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .letter-feature {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        
+        .letter-feature-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        
+        .letter-feature h4 {
+            font-size: 1rem;
+            margin-bottom: 4px;
+            color: #fff;
+        }
+        
+        .letter-feature p {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+            margin: 0;
+        }
+        
+        .letter-note {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 0.95rem;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .letter-image-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .letter-image-placeholder {
+            width: 100%;
+            max-width: 350px;
+            aspect-ratio: 3/4;
+            background: linear-gradient(135deg, rgba(255,107,157,0.1), rgba(255,169,77,0.1));
+            border: 2px dashed rgba(255,107,157,0.4);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .letter-image-placeholder:hover {
+            border-color: #ff6b9d;
+            transform: scale(1.02);
+            box-shadow: 0 20px 40px rgba(255,107,157,0.2);
+        }
+        
+        .placeholder-content {
+            text-align: center;
+        }
+        
+        .placeholder-icon {
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 16px;
+        }
+        
+        .placeholder-text {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ff6b9d;
+            margin-bottom: 8px;
+        }
+        
+        .placeholder-hint {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        /* Letter Modal */
+        .letter-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+        
+        .letter-modal.active {
+            display: flex;
+        }
+        
+        .letter-modal-content {
+            position: relative;
+            max-width: 600px;
+            width: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #0f0f1a);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+        
+        .modal-close:hover {
+            background: #ff6b9d;
+        }
+        
+        .modal-placeholder {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .modal-placeholder-icon {
+            font-size: 5rem;
+            display: block;
+            margin-bottom: 20px;
+        }
+        
+        .modal-placeholder-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #ff6b9d;
+            display: block;
+            margin-bottom: 12px;
+        }
+        
+        .modal-placeholder-desc {
+            color: rgba(255,255,255,0.5);
+        }
+        
+        @media (max-width: 900px) {
+            .letter-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .letter-content h2 {
+                font-size: 2rem;
+            }
+            
+            .letter-features {
+                grid-template-columns: 1fr;
+            }
+            
+            .letter-image-wrapper {
+                order: -1;
+            }
+        }
+    </style>
+
+    <script>
+        function openLetterModal() {
+            document.getElementById('letterModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeLetterModal() {
+            document.getElementById('letterModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+        
+        // ESC key to close
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeLetterModal();
+        });
+    </script>
+
+    <!-- CTA -->
+    <section class="cta-simple">
+        <h2>Hazır mısın?</h2>
+        <p>İlk kapsülünü oluştur, dünyayla paylaş</p>
+        <a href="/create" class="btn-primary-large">
+            <span>Hemen Başla</span>
+            <span class="btn-arrow">→</span>
+        </a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer-simple">
+        <div class="footer-content-simple">
+            <div class="footer-brand-simple">
+                <img src="/static/images/nexusmemoir-logo.png" alt="NexusMemoir" class="footer-logo">
+                <p>Anılarını dünyaya göm.</p>
+            </div>
+            <div class="footer-links-simple">
+                <a href="#map">Harita</a>
+                <a href="#pricing">Fiyatlar</a>
+                <a href="/create">Kapsül Oluştur</a>
+            </div>
+            <div class="footer-links-simple">
+                <a href="/sss">SSS</a>
+                <a href="/iletisim">İletişim</a>
+                <a href="/gizlilik">Gizlilik & KVKK</a>
+            </div>
+        </div>
+        <div class="footer-bottom-simple">
+            <p>&copy; 2026 NexusMemoir • Geleceğe anı kapsülü bırakın</p>
+        </div>
+    </footer>
+
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <script src="/static/js/map-landing.js"></script>
+    <script src="/static/js/neural-bg.js"></script>
+</body>
+</html>
