@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoAds — Geopolymer Adsorpsiyon Platformu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #F4F2ED;
+  --bg2:      #E8E5DE;
+  --surface:  #FFFFFF;
+  --border:   #D6D2C8;
+  --text:     #1C1B18;
+  --text2:    #6B6860;
+  --accent:   #0B9AA8;
+  --accent2:  #087988;
+  --green:    #16A34A;
+  --amber:    #D97706;
+  --red:      #DC2626;
+  --sidebar:  240px;
+  --r:        10px;
+  --mono: 'IBM Plex Mono', monospace;
+  --serif: 'Fraunces', serif;
+}
+[data-theme="dark"] {
+  --bg:      #0D1117;
+  --bg2:     #161B22;
+  --surface: #1C2128;
+  --border:  #2D333B;
+  --text:    #CDD9E5;
+  --text2:   #768390;
+  --accent:  #2DD4BF;
+  --accent2: #0FB8A5;
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+body{
+  font-family:var(--mono);
+  background:var(--bg);
+  color:var(--text);
+  display:flex;
+  min-height:100vh;
+  transition:background .3s,color .3s;
+  font-size:14px;
+}
+
+/* ── SIDEBAR ────────────────────────────── */
+.sidebar{
+  width:var(--sidebar);
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  position:fixed;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  transition:background .3s,border-color .3s;
+  z-index:200;
+}
+
+.logo{
+  padding:22px 20px 18px;
+  border-bottom:1px solid var(--border);
+}
+.logo-name{
+  font-family:var(--serif);
+  font-size:22px;
+  font-weight:700;
+  color:var(--accent);
+  letter-spacing:-0.5px;
+}
+.logo-sub{
+  font-size:10px;
+  color:var(--text2);
+  text-transform:uppercase;
+  letter-spacing:1.2px;
+  margin-top:2px;
+}
+
+nav{
+  flex:1;
+  padding:14px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  overflow-y:auto;
+}
+
+.nav-btn{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:9px 12px;
+  border-radius:7px;
+  background:none;
+  border:none;
+  color:var(--text2);
+  font-family:var(--mono);
+  font-size:13px;
+  cursor:pointer;
+  width:100%;
+  text-align:left;
+  transition:all .15s;
+}
+.nav-btn:hover{background:var(--bg);color:var(--text)}
+.nav-btn.active{background:var(--accent);color:#fff;font-weight:500}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+
+.sidebar-foot{
+  padding:14px 10px;
+  border-top:1px solid var(--border);
+}
+.theme-btn{
+  display:flex;align-items:center;gap:8px;
+  width:100%;padding:8px 12px;
+  background:none;border:1px solid var(--border);
+  border-radius:7px;color:var(--text2);
+  font-family:var(--mono);font-size:12px;
+  cursor:pointer;transition:all .15s;
+}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── MAIN ───────────────────────────────── */
+.main{
+  margin-left:var(--sidebar);
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+}
+
+.topbar{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:18px 32px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+  transition:background .3s,border-color .3s;
+}
+.page-h{font-family:var(--serif);font-size:20px;font-weight:600}
+.topbar-sub{font-size:11px;color:var(--text2);letter-spacing:.5px}
+
+.content{
+  padding:28px 32px;
+  flex:1;
+  animation:fadeUp .3s ease;
+}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* ── LAYOUT GRIDS ────────────────────────── */
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+.sec{margin-bottom:20px}
+
+/* ── CARD ────────────────────────────────── */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:20px;
+  transition:background .3s,border-color .3s;
+}
+.card-h{
+  font-family:var(--serif);
+  font-size:14px;
+  font-weight:600;
+  margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.card-h-dot{
+  width:8px;height:8px;
+  border-radius:50%;
+  background:var(--accent);
+  flex-shrink:0;
+}
+
+/* ── STAT CARD ───────────────────────────── */
+.stat{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:18px 20px;
+  transition:all .3s;
+}
+.stat-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.stat-val{
+  font-family:var(--serif);
+  font-size:36px;font-weight:700;
+  color:var(--accent);
+  line-height:1;
+  margin:6px 0 4px;
+}
+.stat-val sup{font-size:16px;font-weight:400}
+.stat-note{font-size:11px;color:var(--text2)}
+
+/* ── PROGRESS ────────────────────────────── */
+.prog{
+  width:100%;height:5px;
+  background:var(--bg2);
+  border-radius:3px;overflow:hidden;
+  margin-top:8px;
+}
+.prog-fill{
+  height:100%;background:var(--accent);
+  border-radius:3px;transition:width .6s ease;
+}
+
+/* ── TABLE ───────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{
+  padding:9px 11px;text-align:left;
+  background:var(--bg);
+  color:var(--text2);font-size:10px;
+  text-transform:uppercase;letter-spacing:.8px;font-weight:500;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+td{
+  padding:9px 11px;
+  border-bottom:1px solid var(--border);
+  vertical-align:middle;
+  white-space:nowrap;
+}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--bg)}
+
+/* ── BADGE ───────────────────────────────── */
+.badge{
+  display:inline-block;padding:2px 8px;
+  border-radius:4px;font-size:11px;font-weight:500;
+}
+.b-green{background:rgba(22,163,74,.12);color:var(--green)}
+.b-amber{background:rgba(217,119,6,.12);color:var(--amber)}
+.b-blue{background:rgba(11,154,168,.12);color:var(--accent)}
+.b-red{background:rgba(220,38,38,.12);color:var(--red)}
+
+/* ── BUTTON ──────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:7px;
+  font-family:var(--mono);font-size:12px;font-weight:500;
+  cursor:pointer;border:none;transition:all .15s;
+}
+.btn-p{background:var(--accent);color:#fff}
+.btn-p:hover{background:var(--accent2)}
+.btn-o{background:none;border:1px solid var(--border);color:var(--text)}
+.btn-o:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* ── FORM ────────────────────────────────── */
+.fg{display:flex;flex-direction:column;gap:5px}
+.fl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px}
+.fi{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:7px;padding:8px 11px;
+  font-family:var(--mono);font-size:13px;color:var(--text);
+  outline:none;transition:border-color .15s;width:100%;
+}
+.fi:focus{border-color:var(--accent)}
+select.fi{cursor:pointer}
+
+.fgrid{display:grid;gap:10px}
+.fgrid-2{grid-template-columns:repeat(2,1fr)}
+.fgrid-3{grid-template-columns:repeat(3,1fr)}
+
+/* ── FORMULA BOX ─────────────────────────── */
+.fbox{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-left:3px solid var(--accent);
+  border-radius:0 8px 8px 0;
+  padding:16px 20px;
+  font-family:var(--mono);
+  font-size:14px;color:var(--accent);
+  letter-spacing:.3px;
+  min-height:52px;
+  word-break:break-all;
+}
+
+/* ── WORKFLOW ────────────────────────────── */
+.phase{
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  margin-bottom:12px;
+  overflow:hidden;
+  transition:border-color .3s;
+}
+.ph-head{
+  padding:14px 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;
+  background:var(--surface);
+  transition:background .15s;
+}
+.ph-head:hover{background:var(--bg)}
+.ph-title{font-family:var(--serif);font-size:14px;font-weight:600}
+.ph-meta{font-size:11px;color:var(--text2);margin-top:2px}
+.ph-body{padding:12px 18px;background:var(--bg);display:none}
+.ph-body.open{display:block}
+
+.task{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 0;font-size:12px;
+  border-bottom:1px solid var(--border);
+}
+.task:last-child{border-bottom:none}
+.task-cb{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.task-text.done{text-decoration:line-through;color:var(--text2)}
+.task-sel{
+  margin-left:auto;font-size:11px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:4px;padding:3px 8px;
+  font-family:var(--mono);color:var(--text2);
+  cursor:pointer;outline:none;
+}
+
+/* ── CALC RESULT ─────────────────────────── */
+.calc-res{
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);
+  border-radius:var(--r);padding:36px 24px;
+  text-align:center;color:#fff;
+  animation:fadeUp .4s ease;
+}
+.calc-res-label{font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:1px}
+.calc-res-val{font-family:var(--serif);font-size:56px;font-weight:700;line-height:1;margin:8px 0}
+.calc-res-sub{font-size:12px;opacity:.75}
+
+/* ── WARN BANNER ─────────────────────────── */
+.warn{
+  background:rgba(217,119,6,.08);
+  border:1px solid rgba(217,119,6,.25);
+  border-radius:8px;padding:10px 14px;
+  font-size:12px;color:var(--amber);
+  margin-bottom:14px;display:flex;align-items:center;gap:8px;
+}
+.info-box{
+  background:rgba(11,154,168,.07);
+  border:1px solid rgba(11,154,168,.2);
+  border-radius:8px;padding:12px 16px;
+  font-size:12px;color:var(--text2);
+  line-height:1.8;
+}
+.code-block{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:8px;padding:16px;
+  font-family:var(--mono);font-size:11px;
+  color:var(--text);white-space:pre;
+  overflow-x:auto;line-height:1.7;
+}
+
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+.row-flex{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ml-auto{margin-left:auto}
+.gap-top{margin-top:14px}
+.gap-sm{margin-top:8px}
+.txt-sm{font-size:11px;color:var(--text2)}
+.txt-xs{font-size:10px;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═════════════════════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-name">GeoAds</div>
+    <div class="logo-sub">Araştırma Platformu</div>
+  </div>
+  <nav>
+    <button class="nav-btn active" onclick="go('dashboard')">
+      <span class="nav-icon">◈</span>Dashboard
+    </button>
+    <button class="nav-btn" onclick="go('dataset')">
+      <span class="nav-icon">◎</span>Literatür Dataset
+    </button>
+    <button class="nav-btn" onclick="go('workflow')">
+      <span class="nav-icon">◻</span>İş Akışı
+    </button>
+    <button class="nav-btn" onclick="go('formula')">
+      <span class="nav-icon">∑</span>Formül (PySR)
+    </button>
+    <button class="nav-btn" onclick="go('calculator')">
+      <span class="nav-icon">⟡</span>Hesap Makinesi
+    </button>
+    <button class="nav-btn" onclick="go('config')">
+      <span class="nav-icon">⚙</span>Ayarlar
+    </button>
+  </nav>
+  <div class="sidebar-foot">
+    <button class="theme-btn" onclick="toggleTheme()">
+      <span id="th-ico">◑</span><span id="th-lbl">Koyu Mod</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ════════════════════════════════════════════════════════════════ -->
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-h" id="ph">Dashboard</div>
+    </div>
+    <div class="topbar-sub">Fly Ash Geopolymer · Metilen Mavisi Adsorpsiyonu</div>
+  </div>
+  <div class="content" id="content"></div>
+</main>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIG — Google Sheets kurulumundan sonra buraya URL'leri gir
+   ═════════════════════════════════════════════════════════════════════════ */
+const CFG = {
+  CSV_URL:    localStorage.getItem('cfg_csv')    || '',
+  SCRIPT_URL: localStorage.getItem('cfg_script') || '',
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATE
+   ═════════════════════════════════════════════════════════════════════════ */
+const S = {
+  page:    'dashboard',
+  data:    [],
+  tasks:   JSON.parse(localStorage.getItem('tasks')  || '{}'),
+  formula: localStorage.getItem('formula') || '',
+  formulaJS: localStorage.getItem('formulaJS') || '',
+  perf: JSON.parse(localStorage.getItem('perf') || '{}'),
+  theme:   localStorage.getItem('theme') || 'light',
+};
+
+document.documentElement.setAttribute('data-theme', S.theme);
+syncThemeBtn();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROUTER
+   ═════════════════════════════════════════════════════════════════════════ */
+const PAGE_TITLES = {
+  dashboard:'Dashboard', dataset:'Literatür Dataset',
+  workflow:'İş Akışı', formula:'Formül (PySR)',
+  calculator:'Hesap Makinesi', config:'Ayarlar'
+};
+
+function go(page) {
+  S.page = page;
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim().startsWith(
+      {dashboard:'Da',dataset:'Li',workflow:'İş',formula:'Fo',calculator:'He',config:'Ay'}[page]
+    ));
+  });
+  document.getElementById('ph').textContent = PAGE_TITLES[page];
+  const c = document.getElementById('content');
+  c.style.animation = 'none'; void c.offsetHeight;
+  c.style.animation = 'fadeUp .3s ease';
+  PAGES[page]();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME
+   ═════════════════════════════════════════════════════════════════════════ */
+function toggleTheme() {
+  S.theme = S.theme === 'light' ? 'dark' : 'light';
+  localStorage.setItem('theme', S.theme);
+  document.documentElement.setAttribute('data-theme', S.theme);
+  syncThemeBtn();
+  // Re-render charts if on dashboard
+  if (S.page === 'dashboard') PAGES.dashboard();
+}
+function syncThemeBtn() {
+  const ico = document.getElementById('th-ico');
+  const lbl = document.getElementById('th-lbl');
+  if (!ico) return;
+  ico.textContent = S.theme === 'dark' ? '◐' : '◑';
+  lbl.textContent = S.theme === 'dark' ? 'Açık Mod' : 'Koyu Mod';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GOOGLE SHEETS I/O
+   ═════════════════════════════════════════════════════════════════════════ */
+async function loadData() {
+  if (!CFG.CSV_URL) { S.data = demoData(); return; }
+  try {
+    const r = await fetch(CFG.CSV_URL + '&t=' + Date.now());
+    const txt = await r.text();
+    S.data = parseCSV(txt);
+  } catch { S.data = demoData(); }
+}
+
+async function appendRow(row) {
+  if (!CFG.SCRIPT_URL) { S.data.push(row); return {ok:true,demo:true}; }
+  const r = await fetch(CFG.SCRIPT_URL, {
+    method:'POST', body: JSON.stringify(row),
+    headers:{'Content-Type':'application/json'}
+  });
+  return r.json();
+}
+
+function parseCSV(txt) {
+  const lines = txt.trim().split('\n');
+  const hdrs  = lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const vs = line.split(',').map(v=>v.trim().replace(/"/g,''));
+    const o = {};
+    hdrs.forEach((h,i) => o[h] = vs[i] || '');
+    return o;
+  });
+}
+
+function demoData() {
+  return [
+    {yazar:'Zhang et al.',yil:'2021',ratio:'3.0',kur_s:'80',kur_t:'24',conc:'30',ads_t:'2',ads_m:'0.10',temp:'25',removal:'91.4',cap:'27.4'},
+    {yazar:'Liu et al.',yil:'2022',ratio:'2.0',kur_s:'60',kur_t:'48',conc:'50',ads_t:'3',ads_m:'0.10',temp:'23',removal:'87.2',cap:'43.6'},
+    {yazar:'Ahmed et al.',yil:'2023',ratio:'4.0',kur_s:'100',kur_t:'24',conc:'25',ads_t:'4',ads_m:'0.10',temp:'28',removal:'94.8',cap:'23.7'},
+    {yazar:'Wang & Chen',yil:'2022',ratio:'2.5',kur_s:'80',kur_t:'72',conc:'40',ads_t:'3',ads_m:'0.10',temp:'25',removal:'89.5',cap:'35.8'},
+    {yazar:'Park et al.',yil:'2023',ratio:'3.5',kur_s:'90',kur_t:'24',conc:'35',ads_t:'2',ads_m:'0.10',temp:'26',removal:'93.1',cap:'32.6'},
+  ];
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLUMN DEFINITIONS
+   ═════════════════════════════════════════════════════════════════════════ */
+const COLS = [
+  {k:'yazar',    label:'Yazar'},
+  {k:'yil',      label:'Yıl'},
+  {k:'ratio',    label:'FA/Asit'},
+  {k:'kur_s',    label:'Kür °C'},
+  {k:'kur_t',    label:'Kür h'},
+  {k:'conc',     label:'MB ppm'},
+  {k:'ads_t',    label:'Ads h'},
+  {k:'ads_m',    label:'Ads g'},
+  {k:'temp',     label:'T °C'},
+  {k:'removal',  label:'Removal %'},
+  {k:'cap',      label:'Cap mg/g'},
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGE RENDERERS
+   ═════════════════════════════════════════════════════════════════════════ */
+const PAGES = {
+
+  /* ─── DASHBOARD ─────────────────────────────────────────── */
+  dashboard() {
+    const d = S.data;
+    const n = d.length;
+    const avg = n ? (d.reduce((s,r)=>s+num(r.removal),0)/n).toFixed(1) : '—';
+    const mx  = n ? Math.max(...d.map(r=>num(r.removal))).toFixed(1) : '—';
+    const pct = Math.min(n/70*100,100).toFixed(0);
+    const fReady = !!S.formula;
+
+    C(`
+    <div class="sec g4">
+      <div class="stat">
+        <div class="stat-label">Veri Noktası</div>
+        <div class="stat-val">${n}</div>
+        <div class="stat-note">Hedef: 60–80 makale</div>
+        <div class="prog"><div class="prog-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Ort. Giderim Verimi</div>
+        <div class="stat-val">${avg}<sup>%</sup></div>
+        <div class="stat-note">Literatür ortalaması</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Maks. Removal</div>
+        <div class="stat-val">${mx}<sup>%</sup></div>
+        <div class="stat-note">En iyi gözlem</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Formül Durumu</div>
+        <div class="stat-val" style="font-size:${fReady?'22px':'36px'};color:${fReady?'var(--green)':'var(--text2)'}">${fReady?'Hazır ✓':'Bekliyor'}</div>
+        <div class="stat-note">${fReady?'PySR formülü aktif':'Faz 2\'de üretilecek'}</div>
+      </div>
+    </div>
+
+    <div class="sec g2">
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Removal Verimi Dağılımı</div>
+        <canvas id="barChart" height="200"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Parametre Dağılımı (Kür °C)</div>
+        <canvas id="scatterChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="card sec">
+      <div class="card-h"><span class="card-h-dot"></span>Son Eklenen Kayıtlar</div>
+      ${miniTable(d.slice(-5))}
+    </div>
+
+    <div class="sec g3">
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Parametre Hedef Aralıkları</div>
+        ${rangeTable()}
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Proje Faz Özeti</div>
+        ${phaseProgress()}
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Model Performansı</div>
+        ${perfSummary()}
+      </div>
+    </div>
+    `);
+
+    drawBarChart();
+    drawScatterChart();
+  },
+
+  /* ─── DATASET ────────────────────────────────────────────── */
+  dataset() {
+    const warned = !CFG.CSV_URL;
+    C(`
+    ${warned ? `<div class="warn">⚠ Google Sheets bağlantısı yok — demo veri gösteriliyor. Ayarlar'dan yapılandırın.</div>` : ''}
+
+    <div class="row-flex sec">
+      <button class="btn btn-p" onclick="toggleForm()">+ Makale Ekle</button>
+      <button class="btn btn-o" onclick="refreshDataset()">↻ Yenile</button>
+      <span class="txt-sm ml-auto">${S.data.length} kayıt · ${S.data.filter(r=>num(r.removal)>=90).length} ≥ 90%</span>
+    </div>
+
+    <div id="add-form" style="display:none" class="card sec">
+      <div class="card-h"><span class="card-h-dot"></span>Yeni Makale Verisi</div>
+      <div class="fgrid fgrid-3">
+        <div class="fg"><label class="fl">Yazar(lar)</label><input class="fi" id="f-yazar" placeholder="Zhang et al."></div>
+        <div class="fg"><label class="fl">Yıl</label><input class="fi" id="f-yil" type="number" placeholder="2023"></div>
+        <div class="fg"><label class="fl">FA/H₃PO₄ Oranı</label><input class="fi" id="f-ratio" type="number" placeholder="3.0" step="0.1"></div>
+        <div class="fg"><label class="fl">Kür Sıcaklığı (°C)</label><input class="fi" id="f-kur-s" type="number" placeholder="80"></div>
+        <div class="fg"><label class="fl">Kür Süresi (h)</label><input class="fi" id="f-kur-t" type="number" placeholder="24"></div>
+        <div class="fg"><label class="fl">MB Konsantrasyon (ppm)</label><input class="fi" id="f-conc" type="number" placeholder="30"></div>
+        <div class="fg"><label class="fl">Adsorpsiyon Süresi (h)</label><input class="fi" id="f-ads-t" type="number" placeholder="3"></div>
+        <div class="fg"><label class="fl">Adsorban Miktarı (g)</label><input class="fi" id="f-ads-m" type="number" placeholder="0.1" step="0.01"></div>
+        <div class="fg"><label class="fl">Sıcaklık (°C)</label><input class="fi" id="f-temp" type="number" placeholder="25"></div>
+        <div class="fg"><label class="fl">Giderim Verimi (%)</label><input class="fi" id="f-removal" type="number" placeholder="91.4" step="0.1"></div>
+        <div class="fg"><label class="fl">Adsorpsiyon Kap. (mg/g)</label><input class="fi" id="f-cap" type="number" placeholder="27.3" step="0.1"></div>
+        <div class="fg" style="align-self:flex-end">
+          <button class="btn btn-p" id="save-btn" onclick="saveRow()" style="width:100%">Kaydet</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tbl-wrap">
+        ${fullTable(S.data)}
+      </div>
+    </div>
+    `);
+  },
+
+  /* ─── WORKFLOW ───────────────────────────────────────────── */
+  workflow() {
+    const phases = [
+      { id:'p1', title:'Faz 1 — Literatür Taraması', color:'var(--accent)', tasks:[
+        {id:'t1',txt:'Anahtar kelime listesi oluştur'},
+        {id:'t2',txt:'Google Scholar / ScienceDirect taraması yap'},
+        {id:'t3',txt:'60–80 makale / veri noktası topla'},
+        {id:'t4',txt:'Dataset sütunlarını doldur (Google Sheets)'},
+        {id:'t5',txt:'Parametre aralığı dışı makaleleri işaretle'},
+        {id:'t6',txt:'Eksik veri ("YOK") kayıtlarını belgele'},
+      ]},
+      { id:'p2', title:'Faz 2 — Model Geliştirme', color:'var(--green)', tasks:[
+        {id:'t7',txt:'Google Colab ortamını hazırla'},
+        {id:'t8',txt:'Veri ön işleme & normalizasyon'},
+        {id:'t9',txt:'ANN (scikit-learn MLP) modeli eğit'},
+        {id:'t10',txt:'Random Forest modeli eğit'},
+        {id:'t11',txt:'PySR ile sembolik regresyon çalıştır'},
+        {id:'t12',txt:'R², RMSE, MAE karşılaştırması yap'},
+        {id:'t13',txt:'SHAP ile feature importance analizi'},
+        {id:'t14',txt:'Formülü platforma gir'},
+      ]},
+      { id:'p3', title:'Faz 3 — Deneysel Validasyon', color:'var(--amber)', tasks:[
+        {id:'t15',txt:'Deney parametre setini tasarla'},
+        {id:'t16',txt:'Fly ash bazlı geopolymer sentezle'},
+        {id:'t17',txt:'Adsorpsiyon deneylerini yürüt'},
+        {id:'t18',txt:'Model tahmini vs deney sonucu karşılaştır'},
+        {id:'t19',txt:'Hata analizi & sapma yorumu'},
+      ]},
+      { id:'p4', title:'Faz 4 — Tez Yazımı', color:'#8B5CF6', tasks:[
+        {id:'t20',txt:'Literatür tarama bölümü'},
+        {id:'t21',txt:'Materyal & metot bölümü'},
+        {id:'t22',txt:'Bulgular & tartışma'},
+        {id:'t23',txt:'Model & formül açıklaması'},
+        {id:'t24',txt:'Sonuç & öneriler'},
+      ]},
+    ];
+
+    let html = '';
+    phases.forEach(ph => {
+      const done = ph.tasks.filter(t=>S.tasks[t.id]).length;
+      const pct  = Math.round(done/ph.tasks.length*100);
+      html += `
+      <div class="phase">
+        <div class="ph-head" onclick="togglePhase('${ph.id}')">
+          <div>
+            <div class="ph-title">${ph.title}</div>
+            <div class="ph-meta">${done}/${ph.tasks.length} tamamlandı</div>
+          </div>
+          <div style="text-align:right;min-width:90px">
+            <div style="font-family:var(--serif);font-size:22px;color:${ph.color}">${pct}%</div>
+            <div class="prog" style="width:80px;margin-left:auto;margin-top:4px">
+              <div class="prog-fill" style="width:${pct}%;background:${ph.color}"></div>
+            </div>
+          </div>
+        </div>
+        <div class="ph-body${ph.id==='p1'?' open':''}" id="pb-${ph.id}">
+          ${ph.tasks.map(t=>`
+          <div class="task">
+            <input type="checkbox" class="task-cb" ${S.tasks[t.id]?'checked':''} onchange="checkTask('${t.id}',this.checked)">
+            <span class="task-text${S.tasks[t.id]?' done':''}">${t.txt}</span>
+            <select class="task-sel" onchange="setWho('${t.id}',this.value)">
+              <option value="">Kişi?</option>
+              <option value="Sen"     ${S.tasks[t.id+'_w']==='Sen'    ?'selected':''}>Sen</option>
+              <option value="Partner" ${S.tasks[t.id+'_w']==='Partner'?'selected':''}>Partner</option>
+              <option value="İkisi"   ${S.tasks[t.id+'_w']==='İkisi'  ?'selected':''}>İkisi</option>
+            </select>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    });
+
+    C(html);
+  },
+
+  /* ─── FORMULA ────────────────────────────────────────────── */
+  formula() {
+    const p = S.perf;
+    C(`
+    <div class="g2 sec">
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Aktif PySR Formülü</div>
+        <div class="fbox" id="fdisplay">${S.formula||'<span style="color:var(--text2);font-size:12px">Henüz formül girilmedi. PySR çalıştırıldıktan sonra aşağıdan ekleyin.</span>'}</div>
+
+        <div class="divider"></div>
+
+        <div class="fg gap-top">
+          <label class="fl">Görüntüleme Metni (LaTeX benzeri)</label>
+          <input class="fi" id="f-str" placeholder="örn: 0.87 × C^0.5 × T_kur × 0.03 − 12.4" value="${escH(S.formula)}">
+        </div>
+        <div class="fg gap-sm">
+          <label class="fl">JavaScript İfadesi (hesaplama için)</label>
+          <input class="fi" id="f-js" placeholder="örn: 0.87 * Math.pow(C,0.5) * T_kur * 0.03 - 12.4" value="${escH(S.formulaJS)}">
+        </div>
+        <div class="txt-xs gap-sm">Değişken isimleri: C, T_kur, t_kur, t_ads, m, T_ads, ratio</div>
+        <button class="btn btn-p gap-top" onclick="saveFormula()">Formülü Kaydet</button>
+      </div>
+
+      <div>
+        <div class="card sec">
+          <div class="card-h"><span class="card-h-dot"></span>Model Performans Metrikleri</div>
+          <div class="fgrid fgrid-2">
+            <div class="fg"><label class="fl">R²</label><input class="fi" id="p-r2" placeholder="0.94" value="${p.r2||''}"></div>
+            <div class="fg"><label class="fl">RMSE</label><input class="fi" id="p-rmse" placeholder="3.2" value="${p.rmse||''}"></div>
+            <div class="fg"><label class="fl">MAE</label><input class="fi" id="p-mae" placeholder="2.1" value="${p.mae||''}"></div>
+            <div class="fg"><label class="fl">Model Türü</label>
+              <select class="fi" id="p-type">
+                <option ${p.type==='PySR'?'selected':''}>PySR</option>
+                <option ${p.type==='ANN'?'selected':''}>ANN</option>
+                <option ${p.type==='RF'?'selected':''}>Random Forest</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-o btn-sm gap-top" onclick="savePerf()">Kaydet</button>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><span class="card-h-dot"></span>Değişken Tablosu</div>
+          <table>
+            <tr><th>Değişken</th><th>Açıklama</th><th>Birim</th></tr>
+            <tr><td>C</td><td>MB konsantrasyonu</td><td>ppm</td></tr>
+            <tr><td>T_kur</td><td>Kür sıcaklığı</td><td>°C</td></tr>
+            <tr><td>t_kur</td><td>Kür süresi</td><td>h</td></tr>
+            <tr><td>t_ads</td><td>Adsorpsiyon süresi</td><td>h</td></tr>
+            <tr><td>m</td><td>Adsorban miktarı</td><td>g</td></tr>
+            <tr><td>T_ads</td><td>Adsorpsiyon sıcaklığı</td><td>°C</td></tr>
+            <tr><td>ratio</td><td>FA/H₃PO₄ oranı</td><td>—</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    `);
+  },
+
+  /* ─── CALCULATOR ─────────────────────────────────────────── */
+  calculator() {
+    const hasF = !!S.formulaJS;
+    C(`
+    ${!hasF?`<div class="warn">⚠ Formül girilmemiş. "Formül (PySR)" sayfasından JavaScript ifadesini ekleyin.</div>`:''}
+
+    <div class="g2 sec">
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Parametre Girişi</div>
+        <div class="fgrid fgrid-2">
+          <div class="fg"><label class="fl">MB Konsantrasyon (ppm)</label><input class="fi" id="c-conc" type="number" value="30" step="1"></div>
+          <div class="fg"><label class="fl">FA/H₃PO₄ Oranı</label><input class="fi" id="c-ratio" type="number" value="3" step="0.1"></div>
+          <div class="fg"><label class="fl">Kür Sıcaklığı (°C)</label><input class="fi" id="c-kt" type="number" value="80"></div>
+          <div class="fg"><label class="fl">Kür Süresi (h)</label><input class="fi" id="c-ks" type="number" value="24"></div>
+          <div class="fg"><label class="fl">Adsorpsiyon Süresi (h)</label><input class="fi" id="c-at" type="number" value="3"></div>
+          <div class="fg"><label class="fl">Adsorban Miktarı (g)</label><input class="fi" id="c-am" type="number" value="0.1" step="0.01"></div>
+          <div class="fg"><label class="fl">Adsorpsiyon Sıcaklığı (°C)</label><input class="fi" id="c-temp" type="number" value="25"></div>
+        </div>
+        <button class="btn btn-p gap-top" onclick="calc()" style="width:100%;padding:11px">
+          Verim Hesapla →
+        </button>
+        <div class="txt-xs gap-sm">Parametre hedefleri: MB 25–50 ppm · Kür 60–100 °C · Ads 2–4 h</div>
+      </div>
+
+      <div>
+        <div id="calc-out" style="margin-bottom:16px"></div>
+        <div class="card">
+          <div class="card-h"><span class="card-h-dot"></span>Aktif Formül</div>
+          <div class="fbox" style="font-size:13px">${S.formula||'<span style="color:var(--text2)">Bekleniyor...</span>'}</div>
+          ${S.perf.r2 ? `<div class="txt-xs gap-sm">R² = ${S.perf.r2} · RMSE = ${S.perf.rmse||'—'} · Model: ${S.perf.type||'—'}</div>` : ''}
+        </div>
+      </div>
+    </div>
+    `);
+  },
+
+  /* ─── CONFIG ─────────────────────────────────────────────── */
+  config() {
+    C(`
+    <div class="g2 sec">
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Google Sheets Bağlantısı</div>
+        <div class="info-box sec">
+          <b>Kurulum Adımları:</b><br>
+          1. Google Sheets → Dosya → Web'de Yayınla → Tüm Sayfalar → CSV → Bağlantı Oluştur<br>
+          2. Kopyalanan URL'yi aşağıya "CSV URL" olarak gir<br>
+          3. Apps Script kodu için aşağıdaki bloğu kullan, Web App olarak deploy et<br>
+          4. Deploy URL'sini "Script URL" olarak gir
+        </div>
+        <div class="fg sec">
+          <label class="fl">CSV URL (Okuma)</label>
+          <input class="fi" id="cfg-csv" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" value="${CFG.CSV_URL}">
+        </div>
+        <div class="fg" style="margin-bottom:14px">
+          <label class="fl">Apps Script URL (Yazma)</label>
+          <input class="fi" id="cfg-sc" placeholder="https://script.google.com/macros/s/.../exec" value="${CFG.SCRIPT_URL}">
+        </div>
+        <button class="btn btn-p" onclick="saveCfg()">Bağlantıyı Kaydet & Uygula</button>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><span class="card-h-dot"></span>Google Apps Script Kodu</div>
+        <div class="txt-xs" style="margin-bottom:10px">Extensions → Apps Script → Yapıştır → Deploy → Web App</div>
+        <div class="code-block">function doPost(e) {
+  const d = JSON.parse(e.postData.contents);
+  const sh = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getActiveSheet();
+  sh.appendRow([
+    d.yazar, d.yil, d.ratio,
+    d.kur_s, d.kur_t, d.conc,
+    d.ads_t, d.ads_m, d.temp,
+    d.removal, d.cap
+  ]);
+  return ContentService
+    .createTextOutput(
+      JSON.stringify({ok:true})
+    )
+    .setMimeType(
+      ContentService.MimeType.JSON
+    );
+}
+
+function doGet(e) {
+  return ContentService
+    .createTextOutput("GeoAds API OK");
+}</div>
+        <div class="txt-xs gap-sm">Sheet sütun sırası: yazar · yil · ratio · kur_s · kur_t · conc · ads_t · ads_m · temp · removal · cap</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><span class="card-h-dot"></span>Veri Sıfırlama</div>
+      <div class="row-flex">
+        <button class="btn btn-o btn-sm" onclick="if(confirm('Tüm görev durumları silinsin mi?')){localStorage.removeItem('tasks');S.tasks={};alert('Temizlendi.');}">Görevleri Sıfırla</button>
+        <button class="btn btn-o btn-sm" onclick="if(confirm('Formül silinsin mi?')){localStorage.removeItem('formula');localStorage.removeItem('formulaJS');S.formula='';S.formulaJS='';alert('Silindi.');}">Formülü Sil</button>
+      </div>
+    </div>
+    `);
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HTML HELPERS
+   ═════════════════════════════════════════════════════════════════════════ */
+function fullTable(data) {
+  if (!data.length) return '<div style="text-align:center;padding:40px;color:var(--text2)">Henüz kayıt yok. + Makale Ekle ile başla.</div>';
+  const badge = v => {
+    const n = parseFloat(v);
+    const cls = n>=90?'b-green':n>=80?'b-amber':'b-red';
+    return `<span class="badge ${cls}">${v||'YOK'}%</span>`;
+  };
+  return `<table>
+    <thead><tr>${COLS.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>
+    <tbody>${data.map(r=>`<tr>${COLS.map(c=>{
+      if(c.k==='removal') return `<td>${badge(r[c.k])}</td>`;
+      if(!r[c.k]||r[c.k]==='') return `<td><span style="color:var(--text2)">YOK</span></td>`;
+      return `<td>${r[c.k]}</td>`;
+    }).join('')}</tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function miniTable(data) {
+  if (!data.length) return '<div class="txt-sm">Henüz kayıt yok.</div>';
+  return `<table>
+    <thead><tr><th>Yazar</th><th>Yıl</th><th>MB ppm</th><th>Removal</th><th>Kapasite</th></tr></thead>
+    <tbody>${data.map(r=>`<tr>
+      <td>${r.yazar||'—'}</td><td>${r.yil||'—'}</td><td>${r.conc||'—'}</td>
+      <td><span class="badge ${num(r.removal)>=90?'b-green':'b-amber'}">${r.removal||'—'}%</span></td>
+      <td>${r.cap||'—'} mg/g</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function rangeTable() {
+  const rows = [
+    ['MB Miktarı','~0.1 g','±10%'],
+    ['Ads. Süresi','2–4 h','±10%'],
+    ['Konsantrasyon','25–50 ppm','±10%'],
+    ['Sıcaklık (ads)','20–30 °C','Oda koul.'],
+    ['Kür Sıcaklığı','60–100 °C','—'],
+    ['Kür Süresi','24 h döngüsü','24/48/72 h'],
+  ];
+  return `<table><thead><tr><th>Parametre</th><th>Hedef</th><th>Esneme</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function phaseProgress() {
+  const phases = [
+    {label:'Literatür Taraması',tasks:['t1','t2','t3','t4','t5','t6']},
+    {label:'Model Geliştirme',tasks:['t7','t8','t9','t10','t11','t12','t13','t14']},
+    {label:'Deneysel Validasyon',tasks:['t15','t16','t17','t18','t19']},
+    {label:'Tez Yazımı',tasks:['t20','t21','t22','t23','t24']},
+  ];
+  return phases.map(ph=>{
+    const done = ph.tasks.filter(id=>S.tasks[id]).length;
+    const pct = Math.round(done/ph.tasks.length*100);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span>${ph.label}</span><span style="color:var(--accent)">${pct}%</span>
+      </div>
+      <div class="prog"><div class="prog-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function perfSummary() {
+  const p = S.perf;
+  if (!p.r2) return '<div class="txt-sm">Model henüz eğitilmedi. Faz 2\'de doldurulacak.</div>';
+  return `<table>
+    <tr><td style="color:var(--text2);font-size:11px">Model</td><td><strong>${p.type||'—'}</strong></td></tr>
+    <tr><td style="color:var(--text2);font-size:11px">R²</td><td><strong>${p.r2}</strong></td></tr>
+    <tr><td style="color:var(--text2);font-size:11px">RMSE</td><td>${p.rmse||'—'}</td></tr>
+    <tr><td style="color:var(--text2);font-size:11px">MAE</td><td>${p.mae||'—'}</td></tr>
+  </table>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHARTS
+   ═════════════════════════════════════════════════════════════════════════ */
+let charts = {};
+
+function drawBarChart() {
+  const el = document.getElementById('barChart');
+  if (!el || !S.data.length) return;
+  if (charts.bar) charts.bar.destroy();
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  charts.bar = new Chart(el, {
+    type:'bar',
+    data:{
+      labels: S.data.map(d=>d.yazar||'—'),
+      datasets:[{
+        label:'Removal (%)',
+        data: S.data.map(d=>num(d.removal)),
+        backgroundColor: S.data.map(d=>num(d.removal)>=90?'rgba(22,163,74,.7)':'rgba(11,154,168,.6)'),
+        borderWidth:0,
+        borderRadius:4,
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{min:0,max:100,grid:{color:'rgba(128,128,128,.1)'},ticks:{font:{size:10}}},
+        x:{grid:{display:false},ticks:{font:{size:10}}}
+      }
+    }
+  });
+}
+
+function drawScatterChart() {
+  const el = document.getElementById('scatterChart');
+  if (!el || !S.data.length) return;
+  if (charts.sc) charts.sc.destroy();
+  charts.sc = new Chart(el, {
+    type:'scatter',
+    data:{datasets:[{
+      label:'Kür °C vs Removal %',
+      data: S.data.map(d=>({x:num(d.kur_s),y:num(d.removal)})),
+      backgroundColor:'rgba(11,154,168,.65)',
+      pointRadius:6,
+    }]},
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{title:{display:true,text:'Kür Sıcaklığı (°C)',font:{size:10}},grid:{color:'rgba(128,128,128,.1)'}},
+        y:{title:{display:true,text:'Removal (%)',font:{size:10}},min:0,max:100}
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACTIONS
+   ═════════════════════════════════════════════════════════════════════════ */
+function toggleForm() {
+  const f = document.getElementById('add-form');
+  f.style.display = f.style.display==='none' ? 'block' : 'none';
+}
+
+async function saveRow() {
+  const row = {
+    yazar: gi('f-yazar'), yil: gi('f-yil'), ratio: gi('f-ratio'),
+    kur_s: gi('f-kur-s'), kur_t: gi('f-kur-t'), conc: gi('f-conc'),
+    ads_t: gi('f-ads-t'), ads_m: gi('f-ads-m'), temp: gi('f-temp'),
+    removal: gi('f-removal'), cap: gi('f-cap'),
+  };
+  if (!row.yazar) { alert('En azından yazar giriniz.'); return; }
+  const btn = document.getElementById('save-btn');
+  btn.textContent='Kaydediliyor…'; btn.disabled=true;
+  await appendRow(row);
+  btn.textContent='Kaydet'; btn.disabled=false;
+  toggleForm();
+  PAGES.dataset();
+}
+
+async function refreshDataset() {
+  await loadData();
+  PAGES.dataset();
+}
+
+function togglePhase(id) {
+  document.getElementById('pb-'+id).classList.toggle('open');
+}
+
+function checkTask(id, val) {
+  S.tasks[id] = val;
+  localStorage.setItem('tasks', JSON.stringify(S.tasks));
+  const span = document.querySelector(`[onchange="checkTask('${id}',this.checked)"]`)?.nextElementSibling;
+  if (span) { span.classList.toggle('done', val); }
+  // refresh sidebar phase progress doesn't require re-render
+}
+
+function setWho(id, val) {
+  S.tasks[id+'_w'] = val;
+  localStorage.setItem('tasks', JSON.stringify(S.tasks));
+}
+
+function saveFormula() {
+  S.formula   = gi('f-str');
+  S.formulaJS = gi('f-js');
+  localStorage.setItem('formula',   S.formula);
+  localStorage.setItem('formulaJS', S.formulaJS);
+  document.getElementById('fdisplay').textContent = S.formula || '—';
+  showToast('Formül kaydedildi ✓');
+}
+
+function savePerf() {
+  S.perf = { r2: gi('p-r2'), rmse: gi('p-rmse'), mae: gi('p-mae'), type: gi('p-type') };
+  localStorage.setItem('perf', JSON.stringify(S.perf));
+  showToast('Metrikler kaydedildi ✓');
+}
+
+function saveCfg() {
+  CFG.CSV_URL    = gi('cfg-csv');
+  CFG.SCRIPT_URL = gi('cfg-sc');
+  localStorage.setItem('cfg_csv',    CFG.CSV_URL);
+  localStorage.setItem('cfg_script', CFG.SCRIPT_URL);
+  showToast('Kaydedildi. Sayfayı yenileyin.');
+}
+
+function calc() {
+  if (!S.formulaJS) {
+    document.getElementById('calc-out').innerHTML =
+      `<div class="warn">JavaScript formülü girilmemiş. Formül sayfasına gidin.</div>`;
+    return;
+  }
+  const C      = num(gi('c-conc'));
+  const ratio  = num(gi('c-ratio'));
+  const T_kur  = num(gi('c-kt'));
+  const t_kur  = num(gi('c-ks'));
+  const t_ads  = num(gi('c-at'));
+  const m      = num(gi('c-am'));
+  const T_ads  = num(gi('c-temp'));
+
+  let result, err = false;
+  try {
+    result = eval(S.formulaJS);
+    result = Math.min(100, Math.max(0, parseFloat(result)));
+    if (isNaN(result)) throw new Error('NaN');
+  } catch(e) { err = true; result = 'HATA'; }
+
+  document.getElementById('calc-out').innerHTML = err
+    ? `<div class="warn">Formül hesaplanamadı. JavaScript ifadesini kontrol edin.</div>`
+    : `<div class="calc-res">
+        <div class="calc-res-label">Tahmini Giderim Verimi</div>
+        <div class="calc-res-val">${result.toFixed(1)}<span style="font-size:28px">%</span></div>
+        <div class="calc-res-sub">${S.perf.type||'PySR'} modeli · R²=${S.perf.r2||'?'}</div>
+      </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILS
+   ═════════════════════════════════════════════════════════════════════════ */
+function C(html) { document.getElementById('content').innerHTML = html; }
+function gi(id)  { return document.getElementById(id)?.value || ''; }
+function num(v)  { return parseFloat(v) || 0; }
+function escH(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position:'fixed',bottom:'24px',right:'24px',
+    background:'var(--accent)',color:'#fff',
+    padding:'10px 18px',borderRadius:'8px',
+    fontFamily:'var(--mono)',fontSize:'13px',
+    zIndex:'9999',boxShadow:'0 4px 20px rgba(0,0,0,.2)',
+    animation:'fadeUp .3s ease',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INIT
+   ═════════════════════════════════════════════════════════════════════════ */
+loadData().then(() => go('dashboard'));
+</script>
+</body>
+</html>
