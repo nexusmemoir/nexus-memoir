@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify, stream_with_context, Response
-import anthropic
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import json
@@ -7,7 +7,7 @@ import json
 load_dotenv()
 
 app = Flask(__name__)
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 SYSTEM_PROMPT = """ROLÜN: Sen, "fly ash based geopolymer" ve metilen mavisi adsorpsiyonu konusunda uzman bir kimya mühendisi profesörü ve akademik literatür tarama asistanısın.
 
@@ -58,15 +58,19 @@ def chat():
     data = request.get_json()
     messages = data.get("messages", [])
 
+    full_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
+
     def generate():
-        with client.messages.stream(
-            model="claude-sonnet-4-20250514",
+        stream = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=full_messages,
+            stream=True,
             max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            messages=messages,
-        ) as stream:
-            for text in stream.text_stream:
-                yield f"data: {json.dumps({'text': text})}\n\n"
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta
+            if delta.content:
+                yield f"data: {json.dumps({'text': delta.content})}\n\n"
         yield "data: [DONE]\n\n"
 
     return Response(
