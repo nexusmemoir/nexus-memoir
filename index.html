@@ -160,16 +160,16 @@ select.fi{cursor:pointer}
 
 <script>
 const CFG={
-  CSV_URL:   localStorage.getItem('cfg_csv')   ||'',
-  SCRIPT_URL:localStorage.getItem('cfg_script')||'',
+  CSV_URL:   localStorage.getItem('cfg_csv')   ||'https://docs.google.com/spreadsheets/d/e/2PACX-1vQsUnJ7aOzKFKI4-3O8cc5GN2txosJBT8UYkpBbJefnNKgjF_DsTEVGoaKWsK1xwYKmhGnQYeRncJlp/pub?output=csv',
+  SCRIPT_URL:localStorage.getItem('cfg_script')||'https://script.google.com/macros/s/AKfycbxUTrZoFWMwr1zFohSZ0l9bhldk0jmFYFRranfn5r_yymqvl8olcvbrwpOsIQWuMiv3/exec',
 };
 
 const S={
   page:'dashboard',data:[],filtered:[],
   tasks:  JSON.parse(localStorage.getItem('tasks') ||'{}'),
-  formula:localStorage.getItem('formula')  ||'',
-  formulaJS:localStorage.getItem('formulaJS')||'',
-  perf:   JSON.parse(localStorage.getItem('perf')  ||'{}'),
+  formula:localStorage.getItem('formula')  ||'Removal% = (t_kur \u00d7 -6.41) + (T_kur + 232.56 - (115.5 / pH)) - C',
+  formulaJS:localStorage.getItem('formulaJS')||'(t_kur * -6.4055) + (T_kur + 232.56 - (115.5 / pH)) - C',
+  perf:   JSON.parse(localStorage.getItem('perf')  ||'{"r2":"0.839","rmse":"5.66","mae":"","type":"PySR + RF"}'),
   theme:  localStorage.getItem('theme')||'light',
   filterAct:'',filterClass:'',filterSearch:'',
 };
